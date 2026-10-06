@@ -162,10 +162,10 @@ PORT=3000 node server.js
 | 键 | 默认 | 说明 |
 |---|---|---|
 | `port` / `host` | `8787` / `0.0.0.0` | 监听地址 |
-| `productName` | `human-as-llm` | 页面标题、品牌名 |
+| `productName` | `大肥狗AI` | 页面标题、品牌名 |
 | `publicUrl` | 空 | 部署后的公网地址，如 `https://xxx.example.com` |
-| `modelId` | `me-1` | 对外暴露的模型名，客户端要填这个 |
-| `modelDisplayName` | `Me (human)` | 展示名 |
+| `modelId` | `fat-dog` | 对外暴露的模型名，客户端要填这个 |
+| `modelDisplayName` | `大肥狗AI` | 展示名 |
 | `adminPassword` | 随机生成 | 控制台登录口令 |
 | `apiKeys` | 随机生成一把 | 发给别人的调用密钥 |
 | `rateLimitPerMinute` | `30` | 单 key 每分钟请求上限 |
@@ -173,6 +173,21 @@ PORT=3000 node server.js
 | `requestTimeoutMinutes` | `30` | 一条请求等多久自动放弃 |
 | `heartbeatSeconds` | `15` | SSE 心跳间隔 |
 | `maxBodyMB` / `maxUploadMB` | `8` / `10` | 请求体 / 图片上传上限 |
+
+### 换成你自己的名字
+
+默认的 `大肥狗AI` / `fat-dog` 是作者自己起的。改 `config.json` 里这三行，重启即生效 ——
+页面标题、控制面板、教程页里的地址和模型名都会跟着变，**不用动任何源码**：
+
+```json
+{
+  "productName": "你的名字",
+  "modelId": "your-model-id",
+  "modelDisplayName": "你的名字"
+}
+```
+
+`config.example.json` 就是一份默认值模板，可以直接 `cp config.example.json config.json` 再改。
 
 ## 安全清单（暴露到公网前）
 

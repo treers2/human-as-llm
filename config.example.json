@@ -2,11 +2,11 @@
   "port": 8787,
   "host": "0.0.0.0",
 
-  "productName": "human-as-llm",
+  "productName": "大肥狗AI",
   "publicUrl": "",
 
-  "modelId": "me-1",
-  "modelDisplayName": "Me (human)",
+  "modelId": "fat-dog",
+  "modelDisplayName": "大肥狗AI",
 
   "adminPassword": "",
 
