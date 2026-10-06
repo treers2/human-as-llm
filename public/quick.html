@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>调用{{PRODUCT}}</title>
+<style>
+  :root{--border:#e4e3df;--text:#1e1e1d;--muted:#6d6c68;--accent:#534AB7;--warn:#8a5a10;--warn-bg:#FAEEDA}
+  body{margin:0;min-height:100vh;display:flex;justify-content:center;background:#f6f6f4;color:var(--text);
+    font:14px/1.75 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif}
+  .w{max-width:640px;padding:36px 26px 60px}
+  h1{font-size:21px;font-weight:500;margin:0 0 4px}
+  .sub{color:var(--muted);margin:0 0 24px}
+  h2{font-size:13px;font-weight:600;color:var(--muted);margin:26px 0 9px;letter-spacing:.04em}
+  code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px;background:#efeeea;padding:2px 6px;border-radius:5px;word-break:break-all}
+  pre{margin:8px 0 0;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px;background:#fff;
+    border:1px solid var(--border);border-radius:8px;padding:11px 13px;overflow:auto;white-space:pre;line-height:1.6}
+  table{border-collapse:collapse;width:100%;font-size:13px;background:#fff;border:1px solid var(--border);border-radius:10px;overflow:hidden}
+  td{padding:9px 12px;border-bottom:1px solid var(--border);vertical-align:top}
+  tr:last-child td{border-bottom:0}
+  td:first-child{color:var(--muted);width:90px;white-space:nowrap}
+  .box{border-radius:10px;padding:12px 15px;font-size:13px;line-height:1.7;margin:14px 0 0}
+  .box.warn{background:var(--warn-bg);border:1px solid #eedcb4;color:var(--warn)}
+  .box.ok{background:#EAF3DE;border:1px solid #cfe0b4;color:#3B6D11}
+  .box.danger{background:#FCEBEB;border:1px solid #eec4c4;color:#A32D2D}
+  ul{margin:8px 0 0;padding-left:20px}
+  li{margin:3px 0}
+  a{color:var(--accent)}
+  .copy{font:inherit;font-size:11.5px;border:1px solid var(--border);background:#fff;border-radius:6px;
+    padding:1px 7px;margin-left:6px;cursor:pointer;color:var(--muted)}
+  .copy:hover{background:#f6f6f4}
+  .muted{color:var(--muted);font-size:12.5px}
+</style>
+</head>
+<body>
+<div class="w">
+  <h1>调用{{PRODUCT}}</h1>
+  <p class="sub">背后没有模型，坐着一个真人。你发请求，他亲手打字回你 —— <strong>慢是正常的。</strong></p>
+
+  <div class="box ok" id="keyBanner">
+    这条链接里已经带了你的密钥，下面的地址可以直接复制。
+  </div>
+
+  <div class="box danger">
+    <strong>先看这条：别把这一页的地址填进 dsh。</strong><br>
+    你现在浏览器地址栏里那条（<code>/quick?key=…</code>）是<strong>教程页</strong>，填进「API 地址」会失败，
+    报错是 <code>Stream ended without finish_reason</code> —— 因为那是网页，不是接口。
+    <strong>要填的是下面表格里那条带 <code>/k/&lt;密钥&gt;/v1</code> 的。</strong>
+    <button class="copy" id="copyApi" style="margin-top:8px">复制正确的 API 地址</button>
+  </div>
+
+  <h2>三个要填的值</h2>
+  <table>
+    <tr><td>API 地址</td><td><code id="base">{{ORIGIN}}/k/YOUR_API_KEY/v1</code>
+      <button class="copy" data-copy="base">复制</button></td></tr>
+    <tr><td>模型名</td><td><code>{{MODEL}}</code></td></tr>
+    <tr><td>API 密钥</td><td>随便填，或者把地址里那段再填一遍</td></tr>
+  </table>
+
+  <div class="box warn">
+    <strong>密钥必须放在地址里。</strong>中间那层网关会把 <code>Authorization</code> 请求头换成它自己的，
+    只有 URL 路径能原样带过去 —— 所以别只往「API Key」栏里填，照着上面的地址抄才通。
+  </div>
+
+  <h2>dsh 怎么配</h2>
+  <p class="muted" style="margin:0">编辑 <code>~/.dsh/settings.yaml</code>（不存在就新建），或对应的 profile 补丁层：</p>
+  <pre id="yaml">llm-pi-ai:
+  providers:
+    DOGLLM:
+      apiKeyEnv: DOGLLM_API_KEY
+      api: openai-completions
+      baseURL: {{ORIGIN}}/k/YOUR_API_KEY/v1
+      models:
+        - id: {{MODEL}}
+          name: {{MODEL}}
+          contextWindow: 200000
+          maxTokens: 8192
+agent-default-model:
+  provider: DOGLLM
+  model: {{MODEL}}</pre>
+  <p class="muted" style="margin:8px 0 0">然后让 <code>DOGLLM_API_KEY</code> 有个值（内容随便，必须非空），
+  否则 dsh 会报 <code>MISSING_CREDENTIAL</code>：</p>
+  <pre>export DOGLLM_API_KEY=dummy
+dsh web</pre>
+  <p class="muted" style="margin:8px 0 0">改完记得<strong>完全退出 dsh 再启动</strong>，它只在启动时读配置。</p>
+
+  <h2>先用 curl 试通</h2>
+  <pre id="curl">curl -N "{{ORIGIN}}/k/YOUR_API_KEY/v1/chat/completions" \
+  -H "Content-Type: application/json" \
+  -d '{"model":"{{MODEL}}","stream":true,
+       "messages":[{"role":"user","content":"你好"}]}'</pre>
+  <p class="muted" style="margin:8px 0 0">会先收到一行 <code>: {{PRODUCT}} connected</code>，然后就得等 ——
+  他打字期间是静默的，直到回复出来。</p>
+
+  <h2>几个提醒</h2>
+  <ul>
+    <li><strong>慢是正常的</strong> —— 等几分钟很常见，别急着 Ctrl+C。</li>
+    <li><strong>别连着刷</strong> —— 他一次只能回一条，堆太多会被限速。</li>
+    <li><strong>可以发图片</strong> —— 他在控制台里能直接看到你发的图。</li>
+    <li>他回复里如果带图片链接，点开就是原图。</li>
+  </ul>
+
+  <p class="muted" style="margin-top:28px">有更细的问题 → 看<a href="/guide">完整手册</a>。</p>
+</div>
+
+<script>
+(function () {
+  var q = new URLSearchParams(location.search);
+  var key = q.get('key') || q.get('api_key') || '';
+  var shown = key || 'YOUR_API_KEY';
+  var apiUrl = '{{ORIGIN}}/k/' + shown + '/v1';
+
+  document.getElementById('base').textContent = apiUrl;
+
+  var yaml = document.getElementById('yaml');
+  yaml.textContent = yaml.textContent.split('YOUR_API_KEY').join(shown);
+
+  var curl = document.getElementById('curl');
+  curl.textContent = curl.textContent.split('YOUR_API_KEY').join(shown);
+
+  if (!key) {
+    var b = document.getElementById('keyBanner');
+    b.className = 'box warn';
+    b.innerHTML = '⚠️ 这条链接<b>没带密钥</b>，直接照抄会失败 —— 地址里的 '
+      + '<code>YOUR_API_KEY</code> 得换成站长给你的真密钥。';
+  }
+
+  function copyText(text, btn) {
+    var done = function () {
+      var old = btn.textContent;
+      btn.textContent = '已复制 ✓';
+      setTimeout(function () { btn.textContent = old; }, 1400);
+    };
+    if (navigator.clipboard) { navigator.clipboard.writeText(text).then(done, done); return; }
+    var t = document.createElement('textarea');
+    t.value = text; document.body.appendChild(t); t.select();
+    try { document.execCommand('copy'); } catch (e) {}
+    document.body.removeChild(t); done();
+  }
+
+  var copyApi = document.getElementById('copyApi');
+  if (copyApi) copyApi.onclick = function () { copyText(apiUrl, copyApi); };
+
+  document.querySelectorAll('.copy[data-copy]').forEach(function (btn) {
+    btn.onclick = function () {
+      var el = document.getElementById(btn.getAttribute('data-copy'));
+      copyText(el ? el.textContent : '', btn);
+    };
+  });
+})();
+</script>
+</body>
+</html>

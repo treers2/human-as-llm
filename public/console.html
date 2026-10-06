@@ -1,0 +1,1119 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{PRODUCT}} 控制台</title>
+<style>
+  :root{
+    --bg:#f6f6f4; --panel:#ffffff; --panel2:#fbfbfa; --border:#e4e3df; --border2:#d3d2cc;
+    --text:#1e1e1d; --muted:#6d6c68; --faint:#93918b;
+    --accent:#534AB7; --accent-bg:#EEEDFE; --accent-ink:#3C3489;
+    --blue:#185FA5; --blue-bg:#E6F1FB;
+    --ok:#0F6E56; --ok-bg:#E1F5EE;
+    --warn:#8a5a10; --warn-bg:#FAEEDA;
+    --danger:#A32D2D; --danger-bg:#FCEBEB;
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+    --r:10px;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0;background:var(--bg);color:var(--text);
+    font:14px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;}
+  button{font:inherit;cursor:pointer;border-radius:8px;border:1px solid var(--border2);background:#fff;color:var(--text);padding:7px 13px}
+  button:hover{background:#f2f1ee}
+  button:disabled{opacity:.45;cursor:not-allowed}
+  button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+  button.primary:hover{background:#453d9e}
+  button.ok{background:var(--ok);border-color:var(--ok);color:#fff}
+  button.danger{background:#fff;border-color:#e7bcbc;color:var(--danger)}
+  button.ghost{background:transparent;border-color:transparent;color:var(--muted);padding:5px 8px}
+  button.ghost:hover{background:#eeede9;color:var(--text)}
+  input,textarea,select{font:inherit;color:var(--text);background:#fff;border:1px solid var(--border2);border-radius:8px;padding:8px 10px;width:100%}
+  textarea{resize:vertical;font-family:var(--mono);font-size:13px;line-height:1.65}
+  input:focus,textarea:focus,select:focus{outline:2px solid #cecbf6;outline-offset:-1px;border-color:var(--accent)}
+  code{font-family:var(--mono);font-size:12.5px;background:#efeeea;padding:1px 5px;border-radius:4px}
+  .hide{display:none !important}
+
+  /* ---------- 登录 ---------- */
+  #login{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:60}
+  #login .card{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:28px;width:360px}
+  #login h1{margin:0 0 4px;font-size:17px;font-weight:500}
+  #login p{margin:0 0 18px;color:var(--muted);font-size:13px}
+  #loginErr{color:var(--danger);font-size:13px;margin-top:10px;min-height:18px}
+
+  /* ---------- 框架 ---------- */
+  header{display:flex;align-items:center;gap:12px;padding:10px 16px;background:var(--panel);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:20}
+  header .brand{font-weight:500;font-size:15px}
+  header .brand small{font-weight:400;color:var(--faint);font-size:12px;margin-left:6px}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--ok);display:inline-block}
+  .dot.off{background:#c9c7c0}
+  .spacer{flex:1}
+  .pill{font-size:12px;padding:3px 9px;border-radius:999px;background:var(--accent-bg);color:var(--accent-ink);border:1px solid #d8d5f5}
+  .pill.warn{background:var(--warn-bg);color:var(--warn);border-color:#eedcb4}
+  .pill.zero{background:#f0efeb;color:var(--faint);border-color:var(--border)}
+
+  main{display:grid;grid-template-columns:290px 1fr;height:calc(100vh - 51px);overflow:hidden}
+  aside{background:var(--panel);border-right:1px solid var(--border);overflow-y:auto;padding:10px}
+  aside .sec{font-size:11.5px;letter-spacing:.06em;color:var(--faint);text-transform:uppercase;margin:12px 6px 6px}
+  aside .sec:first-child{margin-top:2px}
+  .item{border:1px solid var(--border);border-radius:var(--r);padding:9px 11px;margin-bottom:7px;cursor:pointer;background:var(--panel2);transition:border-color .12s}
+  .item:hover{border-color:var(--border2)}
+  .item.active{border-color:var(--accent);background:var(--accent-bg)}
+  .item .r1{display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--muted)}
+  .item .r2{font-size:13px;margin-top:4px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .item .r3{font-size:11.5px;color:var(--faint);margin-top:3px}
+  .badge{font-size:11px;padding:1px 7px;border-radius:999px;border:1px solid var(--border2);background:#fff;color:var(--muted)}
+  .badge.new{background:var(--warn-bg);border-color:#eedcb4;color:var(--warn)}
+  .badge.done{background:var(--ok-bg);border-color:#bfe4d6;color:var(--ok)}
+  .badge.gone{background:var(--danger-bg);border-color:#eec4c4;color:var(--danger)}
+
+  section.work{display:flex;flex-direction:column;overflow:hidden}
+  .worktop{padding:12px 18px;border-bottom:1px solid var(--border);background:var(--panel);display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .worktop .t{font-size:14px;font-weight:500}
+  .scroll{overflow-y:auto;padding:16px 18px 40px;flex:1}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:var(--r);margin-bottom:14px;overflow:hidden}
+  .card > .hd{display:flex;align-items:center;gap:8px;padding:9px 14px;border-bottom:1px solid var(--border);background:var(--panel2);font-size:12.5px;color:var(--muted)}
+  .card > .bd{padding:14px}
+  details.card > summary{cursor:pointer;list-style:none;user-select:none}
+  details.card > summary::-webkit-details-marker{display:none}
+  details.card > summary::before{content:'▸';margin-right:5px;color:var(--faint);display:inline-block;width:9px}
+  details.card[open] > summary::before{content:'▾'}
+  .msg{border-left:3px solid var(--border2);padding:6px 0 6px 12px;margin-bottom:12px}
+  .msg .role{font-size:11.5px;letter-spacing:.04em;text-transform:uppercase;color:var(--faint);margin-bottom:3px}
+  .msg.user{border-left-color:var(--blue)}
+  .msg.assistant{border-left-color:var(--accent)}
+  .msg.system{border-left-color:#b8b6ae}
+  .msg.tool{border-left-color:var(--ok)}
+  .msg pre{margin:0;white-space:pre-wrap;word-break:break-word;font-family:var(--mono);font-size:12.5px;line-height:1.6}
+  .msg .imgs{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+  .msg .imgs img{max-width:240px;max-height:240px;border-radius:8px;border:1px solid var(--border2);cursor:zoom-in;background:#fff;display:block}
+  .msgfold > summary{cursor:pointer;list-style:none;font-size:12.5px;color:var(--muted);word-break:break-all}
+  .msgfold > summary::-webkit-details-marker{display:none}
+  .msgfold > summary::before{content:'▸ ';color:var(--faint)}
+  .msgfold[open] > summary::before{content:'▾ '}
+  .toolrow{border:1px solid var(--border);border-radius:8px;padding:8px 11px;margin-bottom:7px;background:var(--panel2)}
+  .toolrow .nm{font-family:var(--mono);font-size:12.5px;font-weight:500}
+  .toolrow .ds{font-size:12px;color:var(--muted);margin-top:2px}
+  .toolrow pre{margin:6px 0 0;font-family:var(--mono);font-size:11.5px;color:var(--muted);white-space:pre-wrap;max-height:150px;overflow:auto}
+
+  .composer{position:sticky;bottom:0;background:var(--panel);border-top:1px solid var(--border);padding:12px 18px 14px}
+  .bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:9px}
+  .bar .grow{flex:1}
+  .switch{display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--muted);user-select:none;cursor:pointer}
+  .switch input{width:auto}
+  .hint{font-size:11.5px;color:var(--faint)}
+  .state{font-size:12px;color:var(--muted)}
+  .state.live{color:var(--ok)}
+  .empty{color:var(--faint);text-align:center;padding:70px 20px;font-size:13.5px;line-height:2}
+
+  #toast{position:fixed;right:18px;bottom:18px;display:flex;flex-direction:column;gap:8px;z-index:50}
+  .toast{background:#2c2c2a;color:#fff;padding:9px 15px;border-radius:9px;font-size:13px;max-width:340px}
+  .toast.err{background:var(--danger)}
+  .toast.ok{background:var(--ok)}
+
+  dialog{border:1px solid var(--border);border-radius:14px;padding:0;max-width:620px;width:92vw}
+  dialog::backdrop{background:rgba(0,0,0,.32)}
+  dialog .dlg-hd{padding:14px 18px;border-bottom:1px solid var(--border);font-weight:500}
+  dialog .dlg-bd{padding:18px;max-height:60vh;overflow:auto}
+  .keyrow{display:flex;gap:8px;align-items:center;margin-bottom:8px}
+  .keyrow input{font-family:var(--mono);font-size:12px}
+  .keyblock{border:1px solid var(--border);border-radius:10px;padding:11px 12px;margin-bottom:10px;background:var(--panel2)}
+  .keyblock .lbl{font-size:11.5px;color:var(--faint);margin:0 0 5px}
+
+  /* ---- 历史记录 ---- */
+  #histDlg{max-width:960px;width:94vw}
+  #histDlg .dlg-hd{display:flex;align-items:center;gap:8px}
+  #histDlg .dlg-bd{padding:0;max-height:none}
+  .histbar{display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid var(--border)}
+  .histbar input{flex:1}
+  .histwrap{display:flex;height:min(64vh,580px)}
+  .histlist{width:336px;flex:none;overflow-y:auto;border-right:1px solid var(--border);background:var(--panel2)}
+  .histdetail{flex:1;overflow-y:auto;padding:14px 16px}
+  .histitem{padding:9px 13px;border-bottom:1px solid var(--border);cursor:pointer}
+  .histitem:hover{background:#f1f0ec}
+  .histitem.active{background:var(--accent-bg)}
+  .histitem .q{font-size:13px;line-height:1.5;word-break:break-all}
+  .histitem .a{font-size:12px;color:var(--muted);margin-top:3px;word-break:break-all}
+  .histitem .m{font-size:11px;color:var(--faint);margin-top:5px;display:flex;gap:8px;flex-wrap:wrap}
+</style>
+</head>
+<body>
+
+<!-- 只在本机地址打开时显示：本机与公网是两个独立的队列 -->
+<div id="wrongHost" class="hide" style="background:var(--warn-bg);border-bottom:1px solid #eedcb4;color:var(--warn);padding:9px 16px;font-size:13px;line-height:1.65">
+  你打开的是<b>本机</b>控制台，而 dsh 和外部调用走的是<b>公网</b>地址 —— 请求排在公网那台，在这里看不到。
+  <a id="gotoPublic" href="{{PUBLIC}}/admin" style="color:var(--warn);font-weight:600;text-decoration:underline">去公网控制台 →</a>
+</div>
+
+<div id="login">
+  <div class="card">
+    <h1>{{PRODUCT}} 控制台</h1>
+    <p>输入管理密码，开始扮演那个模型。</p>
+    <input id="pw" type="password" placeholder="管理密码" autocomplete="current-password">
+    <div id="loginErr"></div>
+    <div style="margin-top:14px;display:flex;gap:8px">
+      <button class="primary" style="flex:1" id="loginBtn">进入</button>
+    </div>
+  </div>
+</div>
+
+<header class="hide" id="hdr">
+  <span class="brand">{{PRODUCT}} <small>你就是那个模型</small></span>
+  <span class="dot" id="dot"></span>
+  <span class="state" id="connState">连接中…</span>
+  <span class="spacer"></span>
+  <span class="pill zero" id="pendPill">待回复 0</span>
+  <label class="switch"><input type="checkbox" id="soundChk" checked> 提示音</label>
+  <button class="ghost" id="histBtn">历史</button>
+  <button class="ghost" id="keysBtn">密钥</button>
+  <button class="ghost" id="logoutBtn">退出</button>
+</header>
+
+<main class="hide" id="app">
+  <aside>
+    <div class="sec">待回复</div>
+    <div id="pendingList"><div class="hint" style="padding:6px">暂无请求</div></div>
+    <div class="sec">最近完成</div>
+    <div id="recentList"></div>
+  </aside>
+
+  <section class="work">
+    <div class="worktop" id="worktop">
+      <span class="t">未选中任务</span>
+      <span class="spacer"></span>
+    </div>
+    <div class="scroll" id="detail">
+      <div class="empty">
+        左边会出现在 harness 里发过来的请求。<br>
+        选中它，然后在下面打字 —— 你敲的每个字都会流回客户端。
+      </div>
+    </div>
+    <div class="composer hide" id="composer">
+      <div class="bar">
+        <label class="switch"><input type="checkbox" id="liveMode"> 打字即流式</label>
+        <span class="hint" id="liveHint"></span>
+        <span class="grow"></span>
+        <span class="state" id="sendState"></span>
+      </div>
+      <textarea id="reply" rows="5" placeholder="在这里打字。开启「打字即流式」时，停顿约 0.4 秒就会把新增内容推给客户端。&#10;如果客户端走 XML 工具协议（Cline / Roo Code），直接把 &lt;read_file&gt;&lt;path&gt;...&lt;/path&gt;&lt;/read_file&gt; 这样的标签敲进来就行，不用点工具面板。"></textarea>
+      <div class="hide" id="divergedWarn" style="background:var(--warn-bg);border:1px solid #eedcb4;color:var(--warn);border-radius:8px;padding:8px 11px;margin:9px 0 0;font-size:12.5px;line-height:1.65"></div>
+      <div class="bar" style="margin:9px 0 0">
+        <button class="primary" id="sendBtn">发送全部</button>
+        <button class="ok" id="finishBtn">结束回复</button>
+        <span class="hint" id="charCount">0 字</span>
+        <span class="grow"></span>
+        <button class="ghost" id="imgBtn">插入图片</button>
+        <input type="file" id="imgInput" accept="image/*" class="hide">
+        <button class="ghost" id="toolPanelBtn">工具调用<span id="toolQueuedBadge"></span> ▾</button>
+        <button class="danger" id="cancelBtn">拒绝该请求</button>
+      </div>
+      <div class="card hide" id="toolPanel" style="margin:10px 0 0">
+        <div class="hd">
+          发送 function call
+          <span class="grow"></span>
+          <input id="toolFilter" placeholder="筛选工具…" style="max-width:160px;padding:3px 8px;font-size:12px">
+        </div>
+        <div class="bd">
+          <select id="toolSelect"></select>
+          <div class="hint" id="toolDesc" style="margin:7px 0"></div>
+          <textarea id="toolArgs" rows="5" placeholder="{}"></textarea>
+          <div class="bar" style="margin:9px 0 0">
+            <button class="primary" id="sendToolBtn">发送并结束回合</button>
+            <button id="sendToolKeepBtn">先攒着，再发一个</button>
+          </div>
+          <div class="hint" id="toolQueuedHint" style="margin-top:7px"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<div id="toast"></div>
+
+<dialog id="keysDlg">
+  <div class="dlg-hd">API Key 管理</div>
+  <div class="dlg-bd">
+    <p class="hint" style="margin-top:0">把这些 key 给别人，他们就能在 harness 里调用你。</p>
+    <div id="keyList"></div>
+    <div class="bar" style="margin-top:14px">
+      <input id="newKeyName" placeholder="给这个 key 起个名字，比如 老王" style="flex:1">
+      <button class="primary" id="genKeyBtn">生成</button>
+    </div>
+  </div>
+</dialog>
+
+<dialog id="histDlg">
+  <div class="dlg-hd">
+    历史记录
+    <span class="spacer"></span>
+    <button class="ghost" id="histRefresh">刷新</button>
+    <button class="ghost" id="histClose">关闭</button>
+  </div>
+  <div class="dlg-bd">
+    <div class="histbar">
+      <input id="histSearch" placeholder="搜提问、你的回复、对话内容…">
+      <span class="hint" id="histCount"></span>
+    </div>
+    <div class="histwrap">
+      <div class="histlist" id="histList"></div>
+      <div class="histdetail" id="histDetail"></div>
+    </div>
+  </div>
+</dialog>
+
+<script>
+/* 本机控制台与公网控制台是两个各自独立的进程和队列。
+   dsh / 外部调用走的是公网地址，所以在 127.0.0.1 上打开时给一句提示，免得白等。 */
+(function () {
+  var h = location.hostname;
+  if (h === '127.0.0.1' || h === 'localhost' || h === '::1') {
+    var el = document.getElementById('wrongHost');
+    if (el) el.classList.remove('hide');
+    // config.json 里没配 publicUrl 就不给链接 —— 免得指向一个不存在的地址
+    var a = document.getElementById('gotoPublic');
+    if (a && !'{{PUBLIC}}') a.style.display = 'none';
+  }
+})();
+
+const S = {
+  token: localStorage.getItem('hllm_token') || '',
+  pending: [], recent: [], history: [],
+  selected: null, detail: null,
+  drafts: {}, seen: new Set(), firstLoad: true,
+  pollTimer: null, typeTimer: null, pollAbort: null,
+  titleTimer: null, titleBase: document.title
+};
+
+/*
+ * 草稿自动存本地：正在打但还没发出去的回复，刷新页面 / 关掉标签页都不该丢。
+ * 防抖 500ms 写一次；只保留最近 30 个任务的草稿，避免把配额撑满。
+ */
+const DRAFT_KEY = 'hllm_drafts';
+let draftTimer = null;
+
+function draftsLoad() {
+  try {
+    const o = JSON.parse(localStorage.getItem(DRAFT_KEY) || '{}');
+    return (o && typeof o === 'object' && !Array.isArray(o)) ? o : {};
+  } catch (e) { return {}; }
+}
+
+function draftsSave() {
+  clearTimeout(draftTimer);
+  draftTimer = setTimeout(() => {
+    try {
+      const keep = {};
+      for (const id of Object.keys(S.drafts).slice(-30)) {
+        if (S.drafts[id]) keep[id] = S.drafts[id];
+      }
+      S.drafts = keep;
+      localStorage.setItem(DRAFT_KEY, JSON.stringify(keep));
+    } catch (e) { /* 配额满了就放弃保存，绝不能打断打字 */ }
+  }, 500);
+}
+
+S.drafts = draftsLoad();
+
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+/*
+ * harness 发来的图片要真的渲染出来 —— 只留一个 [image] 字样的话，
+ * 操作员根本没法根据截图判断该怎么回。
+ * 点一下在新标签里打开原图（data URI 也能开）。
+ */
+function imgsHtml(images) {
+  if (!Array.isArray(images) || !images.length) return '';
+  return '<div class="imgs">' + images.map((u, i) =>
+    '<a href="' + esc(u) + '" target="_blank" rel="noopener" title="点击看原图">' +
+    '<img src="' + esc(u) + '" alt="图片 ' + (i + 1) + '" loading="lazy"></a>'
+  ).join('') + '</div>';
+}
+
+/* ---------------- 网络 ---------------- */
+async function api(path, opts = {}) {
+  const res = await fetch(path, {
+    ...opts,
+    signal: opts.signal,
+    headers: { 'Content-Type': 'application/json', 'x-admin-token': S.token, ...(opts.headers || {}) }
+  });
+  // 只有「已登录态下 token 失效」才踢回登录页。
+  // 登录请求自己返回的 401 必须把服务端原话透出去，否则输错密码只会看到
+  // 一句没头没脑的「未授权」，根本看不出是密码不对还是被限流。
+  const isLogin = String(path).indexOf('/admin/api/login') !== -1;
+  if (res.status === 401 && !isLogin) { showLogin(); throw new Error('未授权'); }
+  const txt = await res.text();
+  let data = null;
+  try { data = txt ? JSON.parse(txt) : null; } catch (e) { data = { raw: txt }; }
+  if (!res.ok) throw new Error((data && (data.error || data.message)) || ('HTTP ' + res.status));
+  return data;
+}
+
+/* ---------------- 登录 ---------------- */
+function showLogin() {
+  $('login').classList.remove('hide');
+  $('hdr').classList.add('hide');
+  $('app').classList.add('hide');
+  if (S.pollTimer) clearTimeout(S.pollTimer);
+}
+function showApp() {
+  $('login').classList.add('hide');
+  $('hdr').classList.remove('hide');
+  $('app').classList.remove('hide');
+}
+async function doLogin() {
+  const password = $('pw').value;
+  $('loginErr').textContent = '';
+  try {
+    const r = await api('/admin/api/login', { method: 'POST', body: JSON.stringify({ password }) });
+    if (!r.ok) throw new Error(r.error || '密码错误');
+    S.token = password;
+    localStorage.setItem('hllm_token', password);
+    showApp();
+    poll(true);
+  } catch (e) { $('loginErr').textContent = e.message || '登录失败'; }
+}
+
+/* ---------------- 轮询 ---------------- */
+async function poll(immediate) {
+  if (S.pollTimer) clearTimeout(S.pollTimer);
+  try {
+    const data = await api('/admin/api/tasks');
+    const prevPending = S.pending.map((t) => t.id);
+    S.pending = data.pending; S.recent = data.recent; S.history = data.history || [];
+    const newOnes = S.pending.filter((t) => !S.seen.has(t.id));
+    S.pending.forEach((t) => S.seen.add(t.id));
+    if (newOnes.length && !S.firstLoad) notify(newOnes);
+    S.firstLoad = false;
+    renderLists();
+    if (!S.selected && S.pending.length) select(S.pending[0].id);
+    if (S.selected) {
+      const inList = [...S.pending, ...S.recent].find((t) => t.id === S.selected);
+      if (inList && S.detail && inList.status !== S.detail.status) refreshDetail();
+      if (inList) updateWorktop(inList);
+    }
+    $('connState').textContent = '已连接';
+    $('dot').classList.remove('off');
+  } catch (e) {
+    $('connState').textContent = '断开 · ' + e.message;
+    $('dot').classList.add('off');
+  }
+  S.pollTimer = setTimeout(poll, 1200);
+}
+
+/* ---------------- 提醒 ---------------- */
+function notify(list) {
+  const n = list.length;
+  toast('收到 ' + n + ' 个新请求：' + (list[0].lastMessage || '').slice(0, 60), 'ok');
+  if ($('soundChk').checked) beep();
+  flashTitle('【' + n + ' 条新请求】');
+  try {
+    if (window.Notification && Notification.permission === 'granted') {
+      new Notification('{{PRODUCT}}：有人调用你了', { body: (list[0].lastMessage || '').slice(0, 100) });
+    }
+  } catch (e) {}
+}
+function beep() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const play = (t, f) => {
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = 'sine'; o.frequency.value = f;
+      g.gain.setValueAtTime(0.0001, ctx.currentTime + t);
+      g.gain.exponentialRampToValueAtTime(0.22, ctx.currentTime + t + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + t + 0.18);
+      o.connect(g); g.connect(ctx.destination);
+      o.start(ctx.currentTime + t); o.stop(ctx.currentTime + t + 0.2);
+    };
+    play(0, 880); play(0.19, 1180);
+  } catch (e) {}
+}
+function flashTitle(txt) {
+  if (S.titleTimer) return;
+  let on = false;
+  S.titleTimer = setInterval(() => { document.title = on ? S.titleBase : txt; on = !on; }, 900);
+  setTimeout(() => { clearInterval(S.titleTimer); S.titleTimer = null; document.title = S.titleBase; }, 12000);
+}
+function toast(msg, kind) {
+  const d = document.createElement('div');
+  d.className = 'toast' + (kind ? ' ' + kind : '');
+  d.textContent = msg;
+  $('toast').appendChild(d);
+  setTimeout(() => d.remove(), 4200);
+}
+
+/* ---------------- 列表渲染 ---------------- */
+function ago(ms) {
+  const s = Math.floor(ms / 1000);
+  if (s < 60) return s + ' 秒前';
+  if (s < 3600) return Math.floor(s / 60) + ' 分钟前';
+  return Math.floor(s / 3600) + ' 小时前';
+}
+function itemHtml(t, kind) {
+  const badge = kind === 'pending'
+    ? '<span class="badge new">等待</span>'
+    : (t.status === 'done' ? '<span class="badge done">' + esc(t.finishReason || 'done') + '</span>' : '<span class="badge gone">断开</span>');
+  return '<div class="item' + (S.selected === t.id ? ' active' : '') + '" data-id="' + t.id + '">'
+    + '<div class="r1"><span>' + esc(t.model) + '</span>' + badge + '</div>'
+    + '<div class="r2">' + esc(t.lastMessage || '(空)') + '</div>'
+    + '<div class="r3">' + esc(t.source) + ' · ' + t.messageCount + ' 条 · ' + t.toolCount + ' 工具 · ' + ago(t.ageMs) + '</div>'
+    + '</div>';
+}
+function renderLists() {
+  $('pendingList').innerHTML = S.pending.length
+    ? S.pending.map((t) => itemHtml(t, 'pending')).join('')
+    : '<div class="hint" style="padding:6px">暂无请求</div>';
+  $('recentList').innerHTML = S.recent.length
+    ? S.recent.map((t) => itemHtml(t, 'recent')).join('')
+    : '<div class="hint" style="padding:6px">还没有完成的任务</div>';
+  const n = S.pending.length;
+  const p = $('pendPill');
+  p.textContent = '待回复 ' + n;
+  p.className = 'pill' + (n === 0 ? ' zero' : (n > 0 ? ' warn' : ''));
+  document.querySelectorAll('.item').forEach((el) => {
+    el.onclick = () => select(el.dataset.id);
+  });
+}
+
+/* ---------------- 详情 ---------------- */
+async function select(id) {
+  if (S.selected && $('reply')) { S.drafts[S.selected] = $('reply').value; draftsSave(); }
+  S.selected = id;
+  await refreshDetail();
+  renderLists();
+}
+async function refreshDetail() {
+  if (!S.selected) return;
+  let d;
+  try { d = await api('/admin/api/tasks/' + encodeURIComponent(S.selected)); }
+  catch (e) { return; }
+  S.detail = d;
+  setDiverged(!!d.diverged, (d.sentText || '').length);
+  renderDetail();
+}
+function updateWorktop(t) {
+  const fr = t.status === 'pending' ? '<span class="badge new">等待你回复</span>'
+    : (t.status === 'done' ? '<span class="badge done">已结束 · ' + esc(t.finishReason) + '</span>' : '<span class="badge gone">客户端已断开</span>');
+  $('worktop').innerHTML = '<span class="t">' + esc(t.id) + '</span>'
+    + '<span class="badge">' + esc(t.source) + '</span>'
+    + '<span class="badge">' + esc(t.model) + '</span>'
+    + '<span class="badge">' + (t.stream ? 'stream' : 'non-stream') + '</span>'
+    + fr + '<span class="spacer"></span>'
+    + '<span class="hint">' + ago(t.ageMs) + '</span>';
+}
+/*
+ * 长消息默认折叠成一行。
+ * 一次 dsh 请求里，system prompt 有五六千字、还会再塞一条几千字的 runtime context，
+ * 真正在问的那句「你好」夹在中间 —— 全展开的话根本找不着。短消息始终展开。
+ */
+const MSG_COLLAPSE_CHARS = 600;
+function msgBody(m) {
+  const text = String(m.text == null ? '' : m.text);
+  const imgs = imgsHtml(m.images);
+  if (text.length <= MSG_COLLAPSE_CHARS) return '<pre>' + esc(text) + '</pre>' + imgs;
+  const head = text.split('\n')[0].slice(0, 90);
+  return '<details class="msgfold"><summary>' + esc(head) + ' …（' + text.length + ' 字，点开）</summary>'
+    + '<pre>' + esc(text) + '</pre></details>' + imgs;
+}
+
+function renderDetail() {
+  const d = S.detail;
+  updateWorktop(d);
+
+  let html = '';
+
+  // 对话上下文放最前面、默认展开 —— 这是判断该怎么回的主要依据
+  html += '<div class="card"><div class="hd">对话上下文 · ' + d.messages.length + ' 条</div><div class="bd">';
+  d.messages.forEach((m) => {
+    const cls = ['user','assistant','system','tool'].includes(m.role) ? m.role : 'tool';
+    html += '<div class="msg ' + cls + '"><div class="role">' + esc(m.role) + (m.name ? ' · ' + esc(m.name) : '') + '</div>'
+      + msgBody(m)
+      + '</div>';
+  });
+  html += '</div></div>';
+
+  if (d.text || (d.toolCalls && d.toolCalls.length)) {
+    html += '<div class="card"><div class="hd">你已发出的内容</div><div class="bd">';
+    if (d.text) html += '<pre style="margin:0 0 10px;white-space:pre-wrap;font-family:var(--mono);font-size:12.5px">' + esc(d.text) + '</pre>';
+    (d.toolCalls || []).forEach((tc) => {
+      html += '<div class="toolrow"><div class="nm">→ ' + esc(tc.name) + '()</div><pre>' + esc(tc.arguments) + '</pre></div>';
+    });
+    html += '</div></div>';
+  }
+
+  // 工具 schema 和 system prompt 都很长，默认折叠。
+  // 之前它们总是展开的，而每次渲染又强制滚到底部 —— 结果点开一条请求只看见工具列表，
+  // 对方发来的消息被顶在上面看不见。
+  if (d.tools && d.tools.length) {
+    html += '<details class="card"><summary class="hd">可用工具 · ' + d.tools.length + '（点开看 schema）</summary><div class="bd">';
+    d.tools.forEach((t) => {
+      const fn = t.function || t;
+      html += '<div class="toolrow"><div class="nm">' + esc(fn.name) + '</div>'
+        + '<div class="ds">' + esc(fn.description || '') + '</div>'
+        + '<pre>' + esc(JSON.stringify(fn.parameters || {}, null, 2)) + '</pre></div>';
+    });
+    html += '</div></details>';
+  }
+
+  if (d.systemPrompt) {
+    html += '<details class="card"><summary class="hd">System prompt · ' + d.systemPrompt.length + ' 字</summary>'
+      + '<div class="bd"><pre style="margin:0;white-space:pre-wrap;font-family:var(--mono);font-size:12.5px">'
+      + esc(d.systemPrompt) + '</pre></div></details>';
+  }
+
+  // 同一个任务重渲染时保住滚动位置；切换到别的任务才回到顶部。
+  // （以前一律 scrollTop = scrollHeight，等于每次刷新都把人踹到底部。）
+  const sameTask = S.renderedTask === d.id;
+  const keepScroll = $('detail').scrollTop;
+  $('detail').innerHTML = html;
+  $('detail').scrollTop = sameTask ? keepScroll : 0;
+  S.renderedTask = d.id;
+
+  const isPending = d.status === 'pending';
+  $('composer').classList.toggle('hide', !isPending);
+  if (isPending) {
+    $('reply').value = S.drafts[d.id] || '';
+    updateCount();
+    buildToolSelect();
+    $('sendBtn').disabled = false;
+    $('finishBtn').disabled = false;
+    $('cancelBtn').disabled = false;
+  }
+}
+
+/* ---------------- 回复 ---------------- */
+function updateCount() {
+  const v = $('reply').value;
+  $('charCount').textContent = v.length + ' 字';
+}
+
+/*
+ * 正文的增量在客户端是「只往后接」的，发出去就收不回来。
+ * 所以一旦控制台把内容改短或改乱（退格、改字），客户端那边的正文就停住了 ——
+ * 得让操作员知道，而不是以为对方收到的是自己现在写的东西。
+ */
+function setDiverged(on, sentLen) {
+  const el = $('divergedWarn');
+  if (!el) return;
+  if (!on) { el.classList.add('hide'); return; }
+  el.classList.remove('hide');
+  el.innerHTML = '⚠️ 你改动过已经推送出去的内容。客户端那边的正文是<b>只增不减</b>的，'
+    + '已经收到的' + (sentLen == null ? '' : ' <b>' + sentLen + ' 字</b>') + '收不回来，它会停在那里。<br>'
+    + '想让客户端拿到完整内容：把输入框改回原来的样子继续往下写，或者点「拒绝该请求」让对方重发一次。';
+}
+
+function scheduleType() {
+  if (!$('liveMode').checked || !S.selected) return;
+  clearTimeout(S.typeTimer);
+  S.typeTimer = setTimeout(doType, 420);
+}
+async function doType() {
+  const id = S.selected;
+  if (!id) return;
+  const text = $('reply').value;
+  if (S.detail && text === (S.draftSent || '')) return;
+  try {
+    $('sendState').textContent = '推送中…';
+    const r = await api('/admin/api/tasks/' + id + '/type', { method: 'POST', body: JSON.stringify({ text, live: true }) });
+    S.draftSent = text;
+    setDiverged(!!(r && r.diverged), r && r.sentLength);
+    $('sendState').textContent = '已推送 ' + text.length + ' 字';
+    $('sendState').className = 'state live';
+  } catch (e) {
+    $('sendState').textContent = '推送失败：' + e.message;
+    $('sendState').className = 'state';
+  }
+}
+async function sendAll() {
+  const id = S.selected; if (!id) return;
+  const text = $('reply').value;
+  try {
+    $('sendState').textContent = '发送中…';
+    const r = await api('/admin/api/tasks/' + id + '/flush', {
+      method: 'POST',
+      body: JSON.stringify({ text, sliceSize: 3, delayMs: 16 })
+    });
+    setDiverged(!!(r && r.diverged), r && r.sentLength);
+    $('sendState').textContent = '已发送 ' + text.length + ' 字';
+    $('sendState').className = 'state live';
+    toast('已发完，别忘了点「结束回复」', 'ok');
+  } catch (e) { toast('发送失败：' + e.message, 'err'); }
+}
+async function finishReply() {
+  const id = S.selected; if (!id) return;
+  try {
+    clearTimeout(S.typeTimer);
+    const text = $('reply').value;
+    const r = await api('/admin/api/tasks/' + id + '/flush', { method: 'POST', body: JSON.stringify({ text }) });
+    setDiverged(!!(r && r.diverged), r && r.sentLength);
+    await api('/admin/api/tasks/' + id + '/finish', { method: 'POST', body: JSON.stringify({}) });
+    toast('本轮回复已结束', 'ok');
+    S.drafts[id] = '';
+    draftsSave();
+    await refreshDetail(); renderLists();
+  } catch (e) { toast('结束失败：' + e.message, 'err'); }
+}
+async function cancelTask() {
+  const id = S.selected; if (!id) return;
+  try {
+    await api('/admin/api/tasks/' + id + '/cancel', { method: 'POST', body: JSON.stringify({}) });
+    toast('已拒绝该请求', 'ok');
+    await refreshDetail(); renderLists();
+  } catch (e) { toast('操作失败：' + e.message, 'err'); }
+}
+
+/* ---------------- 发图片 ---------------- */
+/*
+ * 把图上传到网关，换回一个短链接，然后把 markdown 图片语法插进回复框。
+ * 必须用**绝对地址** —— 对端 harness 并不知道我们的域名。
+ *
+ * 两个要记住的性质：
+ *   1. 附件是公网可访问的，链接本身就是凭证（所以 id 是随机的，别人猜不到）；
+ *   2. 存在 pod 内存里，重新发布会丢。
+ */
+async function uploadImage(file) {
+  if (!file) return;
+  if (!/^image\//.test(file.type || '')) return toast('只能发图片', 'err');
+  const maxMB = 10;
+  if (file.size > maxMB * 1024 * 1024) return toast('图片超过 ' + maxMB + ' MB，压一下再传', 'err');
+  try {
+    toast('上传中… ' + Math.round(file.size / 1024) + ' KB');
+    const res = await fetch('/admin/api/upload', {
+      method: 'POST',
+      headers: {
+        'Content-Type': file.type,
+        'x-admin-token': S.token,
+        'x-file-name': encodeURIComponent(file.name || 'image')
+      },
+      body: file
+    });
+    let data = null;
+    try { data = await res.json(); } catch (e) { data = null; }
+    if (!res.ok || !data || !data.ok) throw new Error((data && data.error) || ('HTTP ' + res.status));
+    const abs = location.origin + data.path;
+    insertIntoReply('![' + (file.name || '图片') + '](' + abs + ')');
+    toast('已插入图片链接（' + Math.round(data.bytes / 1024) + ' KB）', 'ok');
+  } catch (e) {
+    toast('上传失败：' + e.message, 'err');
+  }
+}
+
+/** 在光标处插入一段文本，并同步草稿 */
+function insertIntoReply(snippet) {
+  const ta = $('reply');
+  const start = ta.selectionStart == null ? ta.value.length : ta.selectionStart;
+  const end = ta.selectionEnd == null ? ta.value.length : ta.selectionEnd;
+  const before = ta.value.slice(0, start);
+  const after = ta.value.slice(end);
+  const pad = (before && !/\n$/.test(before)) ? '\n' : '';
+  ta.value = before + pad + snippet + after;
+  const pos = (before + pad + snippet).length;
+  ta.selectionStart = ta.selectionEnd = pos;
+  ta.focus();
+  if (S.selected) S.drafts[S.selected] = ta.value;
+  draftsSave();
+  updateCount();
+}
+
+/* ---------------- 工具调用 ---------------- */
+let toolFilterText = '';
+const lastToolByTask = {};      // taskId -> 上次用过的工具名，切回来不用重新找
+
+/** 按筛选词过滤当前请求带的工具，返回 [{t, i}]，i 是在原始 tools 数组里的下标 */
+function visibleTools() {
+  const tools = (S.detail && S.detail.tools) || [];
+  const all = tools.map((t, i) => ({ t, i }));
+  const q = toolFilterText.trim().toLowerCase();
+  if (!q) return all;
+  return all.filter(({ t }) => {
+    const fn = t.function || t;
+    return String(fn.name || '').toLowerCase().includes(q) ||
+           String(fn.description || '').toLowerCase().includes(q);
+  });
+}
+
+function updateToolQueued() {
+  const n = ((S.detail && S.detail.toolCalls) || []).length;
+  const badge = $('toolQueuedBadge');
+  if (badge) badge.innerHTML = n ? ' <b style="color:var(--accent)">(' + n + ')</b>' : '';
+  const hint = $('toolQueuedHint');
+  if (hint) {
+    hint.innerHTML = (n ? '已攒下 <b>' + n + '</b> 个调用 —— 点「结束回复」把整批交给对方。' : '')
+      + 'Ctrl+Enter 快捷发送 · arguments 必须是合法 JSON（可以直接换行）';
+  }
+}
+
+function buildToolSelect() {
+  const tools = (S.detail && S.detail.tools) || [];
+  const sel = $('toolSelect');
+  const list = visibleTools();
+  sel.innerHTML = list.map(({ t, i }) => {
+    const fn = t.function || t;
+    return '<option value="' + i + '">' + esc(fn.name) + '</option>';
+  }).join('');
+  sel.classList.toggle('hide', !list.length);
+
+  const usable = list.length > 0;
+  $('sendToolBtn').disabled = !usable;
+  $('sendToolKeepBtn').disabled = !usable;
+
+  if (usable) {
+    // 优先恢复这个任务上次用过的工具，省得每次翻下拉
+    const want = lastToolByTask[S.selected];
+    const hit = want ? list.find((e) => ((e.t.function || e.t).name === want)) : null;
+    sel.value = String(hit ? hit.i : list[0].i);
+    onToolChange();
+  } else {
+    $('toolDesc').textContent = tools.length
+      ? '没有匹配「' + toolFilterText + '」的工具，把筛选清掉再看看。'
+      : '本次请求没带 tools —— 客户端多半走 XML 工具协议（Cline / Roo Code 这类），直接在输入框里手写 <tool_name>…</tool_name> 标签，然后点「结束回复」即可。';
+    $('toolArgs').value = '{}';
+  }
+  updateToolQueued();
+}
+function exampleFor(s) {
+  if (!s || typeof s !== 'object') return '';
+  if (s.enum && s.enum.length) return s.enum[0];
+  switch (s.type) {
+    case 'integer': case 'number': return 0;
+    case 'boolean': return false;
+    case 'array': return s.items ? [exampleFor(s.items)] : [];
+    case 'object': return skeleton(s);
+    default: return '';
+  }
+}
+function skeleton(schema) {
+  if (!schema) return {};
+  const props = schema.properties || null;
+  if (!props) return exampleFor(schema) || {};
+  const out = {};
+  for (const k of Object.keys(props)) out[k] = exampleFor(props[k]);
+  return out;
+}
+function onToolChange() {
+  const tools = ($('detail') && S.detail && S.detail.tools) || [];
+  const i = parseInt($('toolSelect').value, 10);
+  const t = tools[i];
+  if (!t) return;
+  const fn = t.function || t;
+  if (S.selected) lastToolByTask[S.selected] = fn.name;   // 记住，下次切回来直接选中
+  $('toolDesc').textContent = fn.description || '';
+  $('toolArgs').value = JSON.stringify(skeleton(fn.parameters), null, 2);
+}
+async function sendTool(finish) {
+  const id = S.selected; if (!id) return;
+  const tools = (S.detail && S.detail.tools) || [];
+  const t = tools[parseInt($('toolSelect').value, 10)];
+  if (!t) return toast('没有可选工具', 'err');
+  const fn = t.function || t;
+  let args = $('toolArgs').value;
+  try { JSON.parse(args); } catch (e) { return toast('arguments 不是合法 JSON：' + e.message, 'err'); }
+  try {
+    const text = $('reply').value;
+    if (text) await api('/admin/api/tasks/' + id + '/flush', { method: 'POST', body: JSON.stringify({ text }) });
+    await api('/admin/api/tasks/' + id + '/tool', {
+      method: 'POST',
+      body: JSON.stringify({ name: fn.name, arguments: args, finish })
+    });
+    toast(finish ? ('已发出 ' + fn.name + '() 并结束回合')
+                 : ('已攒下 ' + fn.name + '()，可以再发一个'), 'ok');
+    S.drafts[id] = '';
+    draftsSave();
+    await refreshDetail(); renderLists();
+    if (!finish) $('toolArgs').focus();
+  } catch (e) { toast('发送失败：' + e.message, 'err'); }
+}
+
+/* ---------------- 历史记录 ---------------- */
+/*
+ * 服务端把每条结束的对话追加进 history.jsonl，重启不丢。
+ * 但公网那份跑在云端沙箱里，**重新发布会把存档一起换掉** ——
+ * 所以这里再往浏览器存一份：打开历史时把服务端列表合并进来，
+ * 按 id 去重、本地优先（本地存的是全文，服务端列表只有摘要）。
+ */
+const HIST_KEY = 'hllm_hist';
+const HIST_MAX_LOCAL = 200;
+const HIST_TRIM = 4000;      // 单段文本的本地存储上限，免得撑爆 localStorage
+
+function histLocalLoad() {
+  try {
+    const a = JSON.parse(localStorage.getItem(HIST_KEY) || '[]');
+    return Array.isArray(a) ? a : [];
+  } catch (e) { return []; }
+}
+
+function histLocalSave(list) {
+  try {
+    const trimmed = list.slice(0, HIST_MAX_LOCAL).map((r) => ({
+      id: r.id, createdAt: r.createdAt, closedAt: r.closedAt,
+      source: r.source, model: r.model, status: r.status, finishReason: r.finishReason,
+      lastMessage: r.lastMessage,
+      text: String(r.text || '').slice(0, HIST_TRIM),
+      messageCount: r.messageCount, toolCount: r.toolCount, imageCount: r.imageCount,
+      toolCalls: (r.toolCalls || []).map((tc) => ({ name: tc.name, arguments: String(tc.arguments || '').slice(0, HIST_TRIM) })),
+      messages: (r.messages || []).map((m) => ({
+        role: m.role, name: m.name, tool_call_id: m.tool_call_id, imageCount: m.imageCount,
+        text: String(m.text || '').slice(0, HIST_TRIM)
+      }))
+    }));
+    localStorage.setItem(HIST_KEY, JSON.stringify(trimmed));
+  } catch (e) { /* 配额满了就放弃本地那份，服务端存档不受影响 */ }
+}
+
+let histCache = [];
+let histSelected = null;
+
+function fmtTime(ts) {
+  if (!ts) return '';
+  const d = new Date(ts);
+  const p = (n) => String(n).padStart(2, '0');
+  return (d.getMonth() + 1) + '/' + d.getDate() + ' ' + p(d.getHours()) + ':' + p(d.getMinutes());
+}
+
+function histMerge(serverItems) {
+  const byId = new Map();
+  for (const r of histLocalLoad()) byId.set(r.id, r);
+  for (const s of serverItems) {
+    if (!byId.has(s.id)) byId.set(s.id, s);   // 本地已有全文的，不要被摘要覆盖
+  }
+  histCache = Array.from(byId.values()).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+  histLocalSave(histCache);
+}
+
+async function histRefresh() {
+  const q = $('histSearch').value.trim();
+  let items = [];
+  try {
+    const r = await api('/admin/api/history?limit=200' + (q ? '&q=' + encodeURIComponent(q) : ''));
+    items = r.items || [];
+  } catch (e) { /* 服务端拿不到就只用本地那份 */ }
+
+  if (q) {
+    // 搜索交给服务端 —— 它搜的是全文，本地存的是裁剪版
+    histCache = items.slice().sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+  } else {
+    histMerge(items);
+  }
+  renderHistList();
+}
+
+function renderHistList() {
+  $('histCount').textContent = histCache.length ? histCache.length + ' 条' : '';
+  if (!histCache.length) {
+    $('histList').innerHTML = '<div class="hint" style="padding:16px">还没有历史记录 —— 回完一条就会出现在这里。</div>';
+    return;
+  }
+  $('histList').innerHTML = histCache.map((r) => {
+    const st = r.status === 'done' ? '已回复' : '已断开';
+    const fr = (r.finishReason && r.finishReason !== 'stop') ? ' · ' + esc(r.finishReason) : '';
+    const ans = r.text
+      ? '↳ ' + esc(String(r.text).replace(/\s+/g, ' ').slice(0, 70))
+      : '<i>没有回复</i>';
+    return '<div class="histitem' + (histSelected === r.id ? ' active' : '') + '" data-hid="' + esc(r.id) + '">'
+      + '<div class="q">' + esc(String(r.lastMessage || '(空)').slice(0, 90)) + '</div>'
+      + '<div class="a">' + ans + '</div>'
+      + '<div class="m"><span>' + fmtTime(r.createdAt) + '</span><span>' + esc(r.source || '') + '</span>'
+      + '<span>' + st + fr + '</span></div>'
+      + '</div>';
+  }).join('');
+  $('histList').querySelectorAll('[data-hid]').forEach((el) => {
+    el.onclick = () => histOpen(el.dataset.hid);
+  });
+}
+
+async function histOpen(id) {
+  histSelected = id;
+  renderHistList();
+  let rec = histCache.find((r) => r.id === id);
+  if (!rec || !rec.messages) {
+    try {
+      rec = await api('/admin/api/history/' + encodeURIComponent(id));
+      const i = histCache.findIndex((r) => r.id === id);
+      if (i >= 0) histCache[i] = rec; else histCache.unshift(rec);
+      histLocalSave(histCache);
+    } catch (e) {
+      $('histDetail').innerHTML = '<div class="hint" style="padding:16px">取详情失败：' + esc(e.message) + '</div>';
+      return;
+    }
+  }
+  renderHistDetail(rec);
+}
+
+function renderHistDetail(r) {
+  let html = '<div class="card"><div class="hd">' + fmtTime(r.createdAt)
+    + ' · ' + esc(r.source || '') + ' · ' + esc(r.status)
+    + (r.finishReason ? ' · ' + esc(r.finishReason) : '') + '</div><div class="bd">'
+    + '<div class="hint">' + esc(r.id) + ' · 消息 ' + (r.messageCount || 0) + ' 条 · 工具 ' + (r.toolCount || 0) + ' 个'
+    + (r.imageCount ? ' · 图片 ' + r.imageCount + ' 张（图片原始数据不入档）' : '')
+    + '</div></div></div>';
+
+  html += '<div class="card"><div class="hd">对方发来的内容</div><div class="bd">';
+  (r.messages || []).forEach((m) => {
+    const cls = ['user', 'assistant', 'system', 'tool'].includes(m.role) ? m.role : 'tool';
+    html += '<div class="msg ' + cls + '"><div class="role">' + esc(m.role) + (m.name ? ' · ' + esc(m.name) : '') + '</div>'
+      + msgBody({ text: m.text })
+      + (m.imageCount ? '<div class="hint" style="margin-top:6px">[这条消息里还有 ' + m.imageCount + ' 张图片，历史不保存图片数据]</div>' : '')
+      + '</div>';
+  });
+  html += '</div></div>';
+
+  html += '<div class="card"><div class="hd">你当时回复的</div><div class="bd">';
+  html += r.text
+    ? '<pre style="margin:0;white-space:pre-wrap;font-family:var(--mono);font-size:12.5px">' + esc(r.text) + '</pre>'
+    : '<div class="hint">（没有回复）</div>';
+  (r.toolCalls || []).forEach((tc) => {
+    html += '<div class="toolrow"><div class="nm">→ ' + esc(tc.name) + '()</div><pre>' + esc(tc.arguments) + '</pre></div>';
+  });
+  html += '</div></div>';
+
+  $('histDetail').innerHTML = html;
+  $('histDetail').scrollTop = 0;
+}
+
+/* ---------------- 密钥 ---------------- */
+async function openKeys() {
+  $('keysDlg').showModal();
+  const data = await api('/admin/api/keys');
+  $('keyList').innerHTML = data.keys.map((k) => {
+    const invite = location.origin + '/quick?key=' + encodeURIComponent(k.full);
+    const fullGuide = location.origin + '/guide?key=' + encodeURIComponent(k.full);
+    return '<div class="keyblock">'
+      + '<div class="lbl">' + esc(k.name) + '</div>'
+      + '<div class="keyrow"><input value="' + esc(k.full) + '" readonly>'
+      + '<button class="ghost" data-copy="' + esc(k.full) + '">复制 Key</button>'
+      + '<button class="danger" data-del="' + esc(k.full) + '">删</button></div>'
+      + '<div class="lbl" style="margin-top:9px">邀请链接 · 简短版（发给朋友用这个，里面已带这把 Key）</div>'
+      + '<div class="keyrow"><input value="' + esc(invite) + '" readonly style="font-size:11.5px">'
+      + '<button class="ghost" data-copy="' + esc(invite) + '">复制</button></div>'
+      + '<div class="lbl" style="margin-top:6px">完整手册链接（想细看的人）</div>'
+      + '<div class="keyrow"><input value="' + esc(fullGuide) + '" readonly style="font-size:11.5px">'
+      + '<button class="ghost" data-copy="' + esc(fullGuide) + '">复制</button></div>'
+      + '</div>';
+  }).join('') || '<p class="hint">还没有 key。</p>';
+  $('keyList').querySelectorAll('[data-copy]').forEach((b) => {
+    b.onclick = () => { navigator.clipboard.writeText(b.dataset.copy); toast('已复制', 'ok'); };
+  });
+  $('keyList').querySelectorAll('[data-del]').forEach((b) => {
+    b.onclick = async () => {
+      await api('/admin/api/keys', { method: 'DELETE', body: JSON.stringify({ key: b.dataset.del }) });
+      openKeys();
+    };
+  });
+}
+
+/* ---------------- 绑定 ---------------- */
+$('loginBtn').onclick = doLogin;
+$('pw').addEventListener('keydown', (e) => { if (e.key === 'Enter') doLogin(); });
+$('logoutBtn').onclick = () => { localStorage.removeItem('hllm_token'); S.token = ''; location.reload(); };
+$('keysBtn').onclick = openKeys;
+
+/* 历史记录弹窗 */
+$('histBtn').onclick = () => {
+  histSelected = null;
+  histCache = [];
+  $('histDetail').innerHTML = '<div class="hint" style="padding:16px">左边选一条，看当时的完整对话。</div>';
+  renderHistList();
+  $('histDlg').showModal();
+  histRefresh();
+};
+$('histRefresh').onclick = histRefresh;
+$('histClose').onclick = () => $('histDlg').close();
+let histTimer = null;
+$('histSearch').oninput = () => {
+  clearTimeout(histTimer);
+  histTimer = setTimeout(histRefresh, 300);
+};
+$('genKeyBtn').onclick = async () => {
+  const r = await api('/admin/api/keys', { method: 'POST', body: JSON.stringify({ name: $('newKeyName').value }) });
+  toast('新 key：' + r.key, 'ok');
+  $('newKeyName').value = '';
+  openKeys();
+};
+/*
+ * 输入法组字期间**不能**往外推送。
+ *
+ * 中文输入时输入框的 value 会短暂变成拼音字母 + 候选词编号（比如 "ni1"、"2"），
+ * 这些中间态一旦被推给服务端，就会被当成正式正文发到 harness 那边 ——
+ * 用户看到的就是「我打的字里莫名多了 1、2、3」。
+ * 所以组字期间只更新本地草稿，等 compositionend 之后再推最终文本。
+ *
+ * composingUntil 是防呆：万一某个输入法不触发 compositionend，
+ * 这个时间戳过期后推送会自动恢复，不会永久卡死。
+ * （即使真卡住也不丢内容 —— 「发送全部」和「结束回复」都会直接读取输入框的值。）
+ */
+let composingUntil = 0;
+const COMPOSING_MAX_MS = 30000;
+
+$('reply').addEventListener('compositionstart', () => {
+  composingUntil = Date.now() + COMPOSING_MAX_MS;
+});
+$('reply').addEventListener('compositionend', () => {
+  composingUntil = 0;
+  if (S.selected) S.drafts[S.selected] = $('reply').value;
+  draftsSave();
+  updateCount(); scheduleType();
+});
+$('reply').addEventListener('input', (e) => {
+  if (S.selected) S.drafts[S.selected] = $('reply').value;
+  draftsSave();
+  updateCount();
+  if (e.isComposing || Date.now() < composingUntil) return;   // 组字中，先不推
+  scheduleType();
+});
+$('reply').addEventListener('keydown', (e) => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); finishReply(); }
+});
+/*
+ * 默认关闭「打字即流式」。
+ *
+ * 开着的话对端能实时看到你在写，很好；但 SSE 的正文增量是只往后接的，
+ * 你一旦退格改字，客户端那边已经收到的部分**收不回来**，它就会停在旧内容上 ——
+ * 收到的东西和你输入框里的不一致。
+ * 关掉之后，正文只在点「发送全部」/「结束回复」时吐出去，
+ * 那时内容已经定稿，怎么打怎么改都不会有偏差。
+ */
+function liveHintText() {
+  return $('liveMode').checked
+    ? '边打边推给客户端；⚠️ 之后退格改字客户端收不回来'
+    : '点「发送全部」时才吐给客户端，内容与输入框一定一致（推荐）';
+}
+$('liveMode').onchange = () => { $('liveHint').textContent = liveHintText(); };
+$('liveHint').textContent = liveHintText();
+$('sendBtn').onclick = sendAll;
+$('finishBtn').onclick = finishReply;
+$('cancelBtn').onclick = cancelTask;
+$('sendToolBtn').onclick = () => sendTool(true);
+$('sendToolKeepBtn').onclick = () => sendTool(false);
+$('toolPanelBtn').onclick = () => $('toolPanel').classList.toggle('hide');
+$('toolSelect').onchange = onToolChange;
+$('toolFilter').oninput = () => { toolFilterText = $('toolFilter').value; buildToolSelect(); };
+$('toolArgs').addEventListener('keydown', (e) => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); sendTool(true); }
+});
+$('imgBtn').onclick = () => $('imgInput').click();
+$('imgInput').onchange = () => {
+  const f = $('imgInput').files && $('imgInput').files[0];
+  $('imgInput').value = '';
+  if (f) uploadImage(f);
+};
+// 直接往输入框里粘贴截图，也当发图处理（没有图片就走正常粘贴）
+$('reply').addEventListener('paste', (e) => {
+  const items = (e.clipboardData && e.clipboardData.items) || [];
+  for (const it of items) {
+    if (it.type && it.type.indexOf('image/') === 0) {
+      const f = it.getAsFile();
+      if (f) { e.preventDefault(); uploadImage(f); return; }
+    }
+  }
+});
+
+(function boot() {
+  updateCount();
+  $('liveHint').textContent = liveHintText();
+  try { if (window.Notification && Notification.permission === 'default') Notification.requestPermission(); } catch (e) {}
+  if (S.token) { showApp(); poll(true); } else { showLogin(); }
+})();
+</script>
+</body>
+</html>

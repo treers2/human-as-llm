@@ -1,0 +1,21 @@
+{
+  "port": 8787,
+  "host": "0.0.0.0",
+
+  "productName": "human-as-llm",
+  "publicUrl": "",
+
+  "modelId": "me-1",
+  "modelDisplayName": "Me (human)",
+
+  "adminPassword": "",
+
+  "apiKeys": [],
+
+  "rateLimitPerMinute": 30,
+  "maxPending": 50,
+  "requestTimeoutMinutes": 30,
+  "heartbeatSeconds": 15,
+  "maxBodyMB": 8,
+  "maxUploadMB": 10
+}

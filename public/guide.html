@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>怎么在 dsh 里调用{{PRODUCT}}</title>
+<style>
+  :root{
+    --bg:#f6f6f4; --panel:#fff; --panel2:#fbfbfa; --border:#e4e3df; --border2:#d3d2cc;
+    --text:#1e1e1d; --muted:#6d6c68; --faint:#93918b;
+    --accent:#534AB7; --accent-bg:#EEEDFE; --accent-ink:#3C3489;
+    --ok:#0F6E56; --ok-bg:#E1F5EE; --warn:#8a5a10; --warn-bg:#FAEEDA;
+    --danger:#A32D2D; --danger-bg:#FCEBEB;
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+    --r:12px;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);
+    font:15px/1.75 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+    -webkit-text-size-adjust:100%}
+  .wrap{max-width:760px;margin:0 auto;padding:36px 20px 80px}
+  h1{font-size:24px;font-weight:500;margin:0 0 8px;letter-spacing:-.01em}
+  .lede{color:var(--muted);margin:0 0 28px;font-size:15px}
+  h2{font-size:17px;font-weight:500;margin:36px 0 6px;display:flex;align-items:center;gap:9px}
+  h2 .n{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;
+    border-radius:50%;background:var(--accent);color:#fff;font-size:13px;flex:0 0 auto}
+  h3{font-size:14px;font-weight:500;margin:22px 0 8px;color:var(--muted)}
+  p{margin:9px 0}
+  code{font-family:var(--mono);font-size:13px;background:#eceae5;padding:2px 6px;border-radius:5px;word-break:break-all}
+  pre{margin:10px 0;font-family:var(--mono);font-size:12.5px;line-height:1.7;background:#fbfbfa;
+    border:1px solid var(--border);border-radius:10px;padding:13px 15px;overflow-x:auto;white-space:pre;
+    position:relative}
+  .copy{position:absolute;top:8px;right:8px;font:12px/1 inherit;padding:5px 9px;border-radius:6px;
+    border:1px solid var(--border2);background:#fff;color:var(--muted);cursor:pointer;opacity:.85}
+  .copy:hover{background:#f2f1ee;color:var(--text);opacity:1}
+  .box{background:var(--panel);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin:16px 0}
+  .box.warn{background:var(--warn-bg);border-color:#eedcb4}
+  .box.danger{background:var(--danger-bg);border-color:#eec4c4}
+  .box.ok{background:var(--ok-bg);border-color:#bfe4d6}
+  .box .t{font-weight:500;margin:0 0 6px;font-size:14px}
+  .box.warn .t{color:var(--warn)} .box.danger .t{color:var(--danger)} .box.ok .t{color:var(--ok)}
+  table{border-collapse:collapse;width:100%;font-size:14px;margin:12px 0}
+  td{padding:8px 0;border-bottom:1px solid var(--border);vertical-align:top}
+  td:first-child{color:var(--muted);width:150px;padding-right:14px}
+  td:last-child{font-family:var(--mono);font-size:12.5px;word-break:break-all}
+  .keyfill{background:var(--accent-bg);color:var(--accent-ink);padding:1px 5px;border-radius:4px;font-family:var(--mono);font-size:12.5px}
+  ul{padding-left:22px;margin:9px 0}
+  li{margin:5px 0}
+  .muted{color:var(--muted);font-size:13.5px}
+  .tabs{display:flex;gap:8px;margin:14px 0 0}
+  .tab{padding:7px 15px;border:1px solid var(--border2);border-radius:9px 9px 0 0;border-bottom:none;
+    background:var(--panel2);cursor:pointer;font-size:13.5px;color:var(--muted)}
+  .tab.on{background:var(--panel);color:var(--text);font-weight:500}
+  .pane{background:var(--panel);border:1px solid var(--border2);border-radius:0 10px 10px 10px;padding:4px 18px 18px}
+  .foot{margin-top:48px;padding-top:18px;border-top:1px solid var(--border);color:var(--faint);font-size:13px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>怎么在 dsh 里调用{{PRODUCT}}</h1>
+  <p class="lede">你接下来连上的不是一个模型，而是一个真人。<strong>他收到你的请求后亲手打字回复</strong>，所以慢是正常的，也不会秒回。想清楚再问，一次把话说完。</p>
+
+  <p class="muted" style="margin:-6px 0 0">只想赶紧跑通？看 <a href="/quick"><strong>简短版教程</strong></a>（单屏读完，直接照抄）。这一页是完整版，多了排错对照表和原理说明。</p>
+
+  <div class="box danger">
+    <p class="t">别把这一页的地址当成 API 地址</p>
+    <p style="margin-bottom:0">你现在浏览器地址栏里那条（<code>/guide?key=…</code>）是<strong>给人看的教程页</strong>。
+    把它填进客户端的「API 地址」会失败，报错长这样：<code>Stream ended without finish_reason</code> ——
+    因为服务器回的是一页 HTML，不是 SSE 流。<br>
+    <strong>要填的是路径里带 <code>/k/&lt;你的密钥&gt;/v1</code> 的那条</strong>，本站首页和下面第 1 节都有。</p>
+  </div>
+
+  <div class="box warn">
+    <p class="t">先知道三件事，能省你很多时间</p>
+    <ul style="margin-bottom:0">
+      <li><strong>会很慢。</strong>响应时间取决于他在不在电脑前。别设 30 秒超时，那必然失败。</li>
+      <li><strong>一轮任务要来回好几轮。</strong>dsh 是 agent，它拿到一次回复后会继续发下一轮去读文件、跑命令。你得耐心陪它走完。</li>
+      <li><strong>他可能不按你的剧本走。</strong>毕竟是人。他也可以拒绝、可以说"不知道"。</li>
+    </ul>
+  </div>
+
+  <h2><span class="n">0</span>先装好 dsh</h2>
+  <p>需要 Node.js 18 以上。没有 dsh 就跑下面这条，不用装全局：</p>
+  <pre>npx @deepseek-ai/dsh web<button class="copy">复制</button></pre>
+  <p class="muted">装完之后浏览器打开 <code>http://127.0.0.1:3080</code>，就是 dsh 的 Web UI。</p>
+
+  <h2><span class="n">1</span>拿到凭据</h2>
+  <p>向站长要这几项，或者他直接给了你一个带密钥的本页链接（那样下面表格里已经自动填好了）：</p>
+  <table>
+    <tr><td>Provider ID</td><td>DOGLLM</td></tr>
+    <tr><td>基础 URL</td><td data-tpl="{{ORIGIN}}/k/{{KEY}}/v1"></td></tr>
+    <tr><td>API 协议</td><td>OpenAI Chat Completions</td></tr>
+    <tr><td>模型 ID</td><td>{{MODEL}}</td></tr>
+    <tr><td>API Key</td><td>随便填，填 <code>dummy</code> 就行</td></tr>
+  </table>
+  <div class="box danger">
+    <p class="t">为什么密钥要写在地址里，不能只填密钥栏？</p>
+    <p style="margin-bottom:0">这个服务挂在一层企业级边缘网关上，它会在转发前<strong>覆盖掉 <code>Authorization</code> 请求头</strong>、并剥掉 <code>x-api-key</code>。所以密钥走请求头是<strong>永远通不过的</strong>，只能塞进 URL 路径。别想着改回标准写法，那样一定 401。</p>
+  </div>
+
+  <h2><span class="n">2</span>配给 dsh</h2>
+  <p>两种方式，选一种就行。</p>
+
+  <div class="tabs">
+    <div class="tab on" data-pane="ui">Web UI（推荐）</div>
+    <div class="tab" data-pane="yaml">settings.yaml</div>
+  </div>
+
+  <div class="pane" id="pane-ui">
+    <p>打开 dsh Web UI，进 <strong>Settings → Models → 添加自定义提供方</strong>，按下面填：</p>
+    <table>
+      <tr><td>Provider ID</td><td>DOGLLM</td></tr>
+      <tr><td>显示名称</td><td>我自己</td></tr>
+      <tr><td>基础 URL</td><td data-tpl="{{ORIGIN}}/k/{{KEY}}/v1"></td></tr>
+      <tr><td>API 协议</td><td>OpenAI Chat Completions</td></tr>
+      <tr><td>API Key</td><td>dummy</td></tr>
+      <tr><td>模型列表</td><td>手动填 <code>{{MODEL}}</code></td></tr>
+    </table>
+    <p class="muted">保存后，在会话里把模型切成 <code>{{MODEL}}</code> 就能用了。</p>
+    <div class="box warn" style="margin-bottom:0">
+      <p class="t">Provider ID 保存后永久不可改</p>
+      <p style="margin-bottom:0">填错了只能删掉重建。<code>DOGLLM</code> <strong>大小写敏感</strong>：YAML 里的键名、下面 <code>provider:</code> 的值、这里的 Provider ID，三处必须一模一样，写成 <code>dogllm</code> 就是另一个提供方了。</p>
+    </div>
+  </div>
+
+  <div class="pane" id="pane-yaml" style="display:none">
+    <p>编辑 <code>~/.dsh/settings.yaml</code>（Windows 是 <code>C:\Users\你的用户名\.dsh\settings.yaml</code>）。文件不存在就新建：</p>
+    <pre id="yaml-block">llm-pi-ai:
+  providers:
+    DOGLLM:
+      apiKeyEnv: DOGLLM_API_KEY
+      api: openai-completions
+      # ↓↓↓ 注意：下面这一行的密钥段必须换成真密钥，原样保留会报「API密钥无效」 ↓↓↓
+      baseURL: {{ORIGIN}}/k/YOUR_API_KEY/v1
+      models:
+        - id: {{MODEL}}
+          name: {{MODEL}}
+          contextWindow: 200000
+          maxTokens: 8192
+agent-default-model:
+  provider: DOGLLM
+  model: {{MODEL}}<button class="copy">复制</button></pre>
+    <p>然后让 dsh 能拿到一个<strong>非空</strong>的凭据 —— 拿不到它会直接报 <code>MISSING_CREDENTIAL</code>，连请求都不发：</p>
+    <pre>export DOGLLM_API_KEY=dummy
+dsh web<button class="copy">复制</button></pre>
+    <p class="muted">值是什么无所谓 —— 真正管用的密钥在 URL 里，它只是个占位。Windows PowerShell 里换成 <code>$env:DOGLLM_API_KEY="dummy"</code>。
+    不想动环境变量也行：在 dsh 的凭据设置里存一条名为 <code>DOGLLM_API_KEY</code> 的记录（dsh 会写进 <code>~/.dsh/.credentials.yaml</code> 的 <code>refs:</code> 下），效果一样。</p>
+    <div class="box danger" style="margin-bottom:0">
+      <p class="t">如果你之前已经配过别的 provider</p>
+      <p style="margin-bottom:0">把 <code>DOGLLM:</code> 这一段<strong>追加到已有的 <code>providers:</code> 下面</strong>，不要新写一个 <code>llm-pi-ai:</code> 节点 —— YAML 里同名的键会互相覆盖，那样你原来的模型配置会全部消失。</p>
+    </div>
+    <div class="box" style="margin-bottom:0">
+      <p class="t">改了没反应？看看是不是改错了文件</p>
+      <p style="margin-bottom:0">dsh 的配置有两个可能的位置：全局的 <code>~/.dsh/settings.yaml</code>，
+      以及每个 profile 自己的补丁层 <code>~/.dsh/profiles/&lt;profile&gt;/cordis.patch.yml</code>。
+      <strong>如果你是用 Web UI 配的，实际落盘多半在后者</strong>（这台机器上就是
+      <code>~/.dsh/profiles/desktop/cordis.patch.yml</code>）。改完记得<strong>完全退出 dsh 再启动</strong>，
+      它只在启动时读配置。</p>
+    </div>
+  </div>
+
+  <h2><span class="n">3</span>验证一下通没通</h2>
+  <p>跑这条，然后去干点别的，等站长回复：</p>
+  <pre>dsh --profile headless "请只回复两个字：收到"<button class="copy">复制</button></pre>
+  <div class="box ok">
+    <p class="t">正常应该是这样</p>
+    <p style="margin-bottom:0">等一会儿（可能几分钟），终端会吐出 <code>收到</code>，然后进程正常退出。这说明整条链路通了。</p>
+  </div>
+  <p class="muted">如果卡住不动，<strong>先别急着 Ctrl+C</strong> —— 大概率只是他还没回。等够 5 分钟再说。</p>
+
+  <h2><span class="n">4</span>用起来会是什么样</h2>
+  <p>dsh 每次会话<strong>第一发请求就会带上 25 个工具定义</strong>：</p>
+  <pre>create_goal  edit  glob  grep  pwsh  read  read_image  subagent
+todo_write  web_fetch  web_search  write  ...<button class="copy">复制</button></pre>
+  <p>这是标准 OpenAI function calling。意味着：</p>
+  <ul>
+    <li>他可以让你<strong>批准一个工具调用</strong>（比如"读这个文件"），然后 dsh 会真的去执行，再把结果发回来。</li>
+    <li>一个稍复杂的任务（"帮我看看这个仓库结构"）通常需要他回 3～10 轮。这不是出故障了，是正常流程。</li>
+    <li>所以<strong>别扔一个大任务然后走开</strong>，你俩得对着耗。</li>
+  </ul>
+
+  <h2><span class="n">5</span>出问题了？对号入座</h2>
+  <table>
+    <tr><td>MISSING_CREDENTIAL</td><td>凭据没解析到。执行 <code>export DOGLLM_API_KEY=dummy</code> 再启动，或在 dsh 的凭据库里存一条名为 <code>DOGLLM_API_KEY</code> 的记录（值随便填）</td></tr>
+    <tr><td>400 / 404</td><td>地址末尾的 <code>/v1</code> 漏了</td></tr>
+    <tr><td><strong>API密钥无效 / AUTH / 401</strong></td><td><strong>最常见的一种。</strong>地址里的密钥段没替换 —— 检查是不是还留着 <code>YOUR_API_KEY</code> 这几个字，那是<strong>占位符</strong>，必须换成站长给你的真密钥。整段应该是 <code>.../k/sk-me-xxxx/v1</code>，<code>/k/</code> 和结尾的 <code>/v1</code> 都不能少</td></tr>
+    <tr><td>model not found</td><td>模型 ID 必须填 <code>{{MODEL}}</code>，其它名字不存在</td></tr>
+    <tr><td>卡住不动 / 超时</td><td>最常见的情况：真人还没回。等够 5 分钟。<code>stream_idle_timeout_ms</code> 默认 5 分钟，可以调大</td></tr>
+    <tr><td>reply 内容很奇怪</td><td>正常。对面是人，可以随时打断、重新说清楚你的需求</td></tr>
+    <tr><td>429 Rate limit</td><td>发太快了，一分钟 30 次上限。你也不是在跟 API 说话，慢点</td></tr>
+  </table>
+
+  <h2><span class="n">6</span>礼貌提醒</h2>
+  <ul>
+    <li>密钥只给你自己用，别外传。站长可以随时单独吊销你的那把。</li>
+    <li>别拿它跑批量任务或自动化流水线 —— 每一条请求都要占用一个真人的注意力。</li>
+    <li>深夜发长任务之前，想想对面那个人是不是该睡了。</li>
+  </ul>
+
+  <p class="foot">这份手册的最后更新：2026-10-06 · 有问题直接找站长</p>
+</div>
+
+<script>
+(function () {
+  var q = new URLSearchParams(location.search);
+  var key = q.get('key') || q.get('api_key') || '';
+  var shown = key || 'YOUR_API_KEY';
+
+  // 表格里所有 data-tpl 的单元格
+  document.querySelectorAll('[data-tpl]').forEach(function (el) {
+    el.textContent = el.dataset.tpl.replace('{{KEY}}', shown);
+  });
+
+  // settings.yaml 代码块
+  var yb = document.getElementById('yaml-block');
+  var raw = yb.textContent.replace(/复制$/, '');
+  var filled = raw.split('YOUR_API_KEY').join(shown);
+  yb.innerHTML = '';
+  yb.appendChild(document.createTextNode(filled));
+  var btn = document.createElement('button');
+  btn.className = 'copy';
+  btn.textContent = '复制';
+  yb.appendChild(btn);
+
+  // 复制按钮
+  document.addEventListener('click', function (e) {
+    var b = e.target.closest('.copy');
+    if (!b) return;
+    var pre = b.closest('pre');
+    var txt = pre ? pre.textContent.replace(/复制$/, '').trim() : '';
+    var done = function () {
+      var old = b.textContent;
+      b.textContent = '已复制';
+      setTimeout(function () { b.textContent = old; }, 1400);
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(txt).then(done, function () { fallback(txt, done); });
+    } else { fallback(txt, done); }
+  });
+
+  function fallback(txt, done) {
+    var ta = document.createElement('textarea');
+    ta.value = txt;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand('copy'); done(); } catch (err) { /* ignore */ }
+    document.body.removeChild(ta);
+  }
+
+  // 顶部提示：如果链接里带了 key
+  if (key) {
+    var bar = document.createElement('div');
+    bar.className = 'box ok';
+    bar.innerHTML = '<p class="t" style="margin:0">这个链接里已经带上你的密钥了</p>'
+      + '<p style="margin:6px 0 0" class="muted">下面的配置直接照抄就行，不用再问站长要。请勿把本链接转发给其他人。</p>';
+    document.querySelector('.lede').after(bar);
+    document.title = '怎么在 dsh 里调用「我」（已含密钥）';
+  } else {
+    var warn = document.createElement('div');
+    warn.className = 'box danger';
+    warn.innerHTML = '<p class="t" style="margin:0">这条链接没带密钥，照着抄会失败</p>'
+      + '<p style="margin:6px 0 0" class="muted">下面配置里的 <code>YOUR_API_KEY</code> 是一个<strong>占位符</strong>，'
+      + '不是能用的密钥。原样填进 dsh 会报「<strong>API密钥无效 / AUTH</strong>」—— 已经有人踩过这个坑了。'
+      + '请找站长要一条带密钥的链接，或者向他要密钥后自己替换掉。</p>';
+    document.querySelector('.lede').after(warn);
+    document.title = '怎么在 dsh 里调用「我」（缺少密钥）';
+  }
+
+  // Tab 切换
+  document.querySelectorAll('.tab').forEach(function (t) {
+    t.addEventListener('click', function () {
+      document.querySelectorAll('.tab').forEach(function (x) { x.classList.remove('on'); });
+      t.classList.add('on');
+      document.getElementById('pane-ui').style.display = t.dataset.pane === 'ui' ? '' : 'none';
+      document.getElementById('pane-yaml').style.display = t.dataset.pane === 'yaml' ? '' : 'none';
+    });
+  });
+})();
+</script>
+</body>
+</html>

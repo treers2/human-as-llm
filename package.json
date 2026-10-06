@@ -1,0 +1,14 @@
+{
+  "name": "dafeigou-ai",
+  "version": "1.0.0",
+  "private": true,
+  "description": "把你自己伪装成一个 LLM 的 OpenAI 兼容网关。请求会挂起，由真人亲手打字回复。",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node test-client.js --tools"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

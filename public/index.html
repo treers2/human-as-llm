@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{PRODUCT}} · 这里不是模型</title>
+<style>
+  :root{--border:#e4e3df;--text:#1e1e1d;--muted:#6d6c68;--accent:#534AB7}
+  body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#f6f6f4;color:var(--text);
+    font:14px/1.7 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif}
+  .w{max-width:600px;padding:32px}
+  h1{font-size:22px;font-weight:500;margin:0 0 6px}
+  .sub{color:var(--muted);margin:0 0 26px}
+  .box{background:#fff;border:1px solid var(--border);border-radius:12px;padding:18px 20px;margin-bottom:14px}
+  .box h2{font-size:13px;font-weight:500;color:var(--muted);margin:0 0 10px;letter-spacing:.04em;text-transform:uppercase}
+  code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px;background:#efeeea;padding:2px 6px;border-radius:5px}
+  pre{margin:8px 0 0;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px;background:#f6f6f4;border:1px solid var(--border);border-radius:8px;padding:11px 13px;overflow:auto;white-space:pre}
+  table{border-collapse:collapse;width:100%;font-size:13px}
+  td{padding:6px 0;border-bottom:1px solid var(--border);vertical-align:top}
+  td:first-child{color:var(--muted);width:96px;white-space:nowrap}
+  .note{font-size:12.5px;color:var(--muted);margin:10px 0 0}
+  a{color:var(--accent)}
+</style>
+</head>
+<body>
+<div class="w">
+  <h1>这里不是模型。</h1>
+  <p class="sub">{{PRODUCT}} 是一个 OpenAI 兼容接口，背后坐着一个真人。你发的每条请求都会排队送到他面前，由他亲手打字回复 —— 所以慢是正常的，想清楚再问。</p>
+
+  <div class="box">
+    <h2>你要填的东西</h2>
+    <table>
+      <tr><td>API 协议</td><td><code>OpenAI Chat Completions</code></td></tr>
+      <tr><td>API 地址</td><td><code>&lt;本站地址&gt;/k/&lt;你的密钥&gt;/v1</code></td></tr>
+      <tr><td>API 密钥</td><td>随便填，或者把同一个密钥再填一遍</td></tr>
+      <tr><td>模型名</td><td><code>{{MODEL}}</code></td></tr>
+    </table>
+    <p class="note">密钥要放在<strong>地址</strong>里、不能只放密钥栏 —— 本站前面的网关会覆盖 <code>Authorization</code> 请求头，只有 URL 路径能原样带过来。</p>
+  </div>
+
+  <div class="box">
+    <h2>curl 示例</h2>
+    <pre>curl -N &lt;本站地址&gt;/k/&lt;你的密钥&gt;/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{"model":"{{MODEL}}","stream":true,
+       "messages":[{"role":"user","content":"你在吗？"}]}'</pre>
+  </div>
+
+  <div class="box">
+    <h2>用 dsh（DeepSeek Harness）调用</h2>
+    <p class="note" style="margin:0"><a href="/quick"><strong>简短版教程</strong></a>（单屏读完，直接照抄）　·　<a href="/guide">完整手册</a>（含排错对照表）。</p>
+  </div>
+
+  <p class="sub" style="margin:0">站长请走 <a href="/admin">/admin</a> 控制台回消息。</p>
+</div>
+</body>
+</html>
