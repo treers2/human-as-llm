@@ -97,6 +97,29 @@
   .toolrow .ds{font-size:12px;color:var(--muted);margin-top:2px}
   .toolrow pre{margin:6px 0 0;font-family:var(--mono);font-size:11.5px;color:var(--muted);white-space:pre-wrap;max-height:150px;overflow:auto}
 
+  /* ---- 工具参数表单 ---- */
+  .toolform{border:1px solid var(--border);border-radius:9px;padding:12px 13px;background:var(--panel2);max-height:340px;overflow-y:auto}
+  .tf-field{margin-bottom:13px}
+  .tf-field:last-child{margin-bottom:0}
+  .tf-field > .tf-label{font-size:12.5px;font-weight:500;margin-bottom:5px;display:flex;align-items:baseline;gap:6px;flex-wrap:wrap}
+  .tf-field .raw{font-family:var(--mono);font-size:10.5px;color:var(--faint);font-weight:400}
+  .tf-field .req{color:#A32D2D}
+  .tf-hint{font-size:11.5px;color:var(--muted);line-height:1.6;margin:-2px 0 5px}
+  .tf-field input[type=text],.tf-field input[type=number],.tf-field textarea,.tf-field select{width:100%;box-sizing:border-box}
+  .tf-field textarea{min-height:64px;resize:vertical;font-family:var(--mono);font-size:12.5px}
+  .tf-bool{display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer}
+  .tf-bool input{width:auto;margin:0}
+  .tf-group{border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin:0 0 13px}
+  .tf-group > legend{font-size:12px;color:var(--muted);padding:0 5px}
+  .tf-list-row{display:flex;gap:7px;align-items:center;margin-bottom:6px}
+  .tf-list-row input{flex:1}
+  .tf-del{background:transparent;border-color:transparent;color:var(--faint);padding:4px 8px;flex:none}
+  .tf-del:hover{color:#A32D2D;background:#FCEBEB}
+  .tf-add{margin-top:2px}
+  .tf-empty{font-size:12.5px;color:var(--faint);margin-bottom:6px}
+  .tf-json{font-family:var(--mono);font-size:12px;min-height:64px}
+  .tf-json.tf-bad{border-color:#A32D2D;background:#FCEBEB}
+
   .composer{position:sticky;bottom:0;background:var(--panel);border-top:1px solid var(--border);padding:12px 18px 14px}
   .bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:9px}
   .bar .grow{flex:1}
@@ -217,7 +240,12 @@
         <div class="bd">
           <select id="toolSelect"></select>
           <div class="hint" id="toolDesc" style="margin:7px 0"></div>
-          <textarea id="toolArgs" rows="5" placeholder="{}"></textarea>
+          <div id="toolForm"></div>
+          <textarea id="toolArgs" rows="5" placeholder="{}" class="hide"></textarea>
+          <div class="bar" style="margin:9px 0 0">
+            <button class="ghost" id="toolModeBtn">改用 JSON 编辑</button>
+            <span class="hint" id="toolModeHint"></span>
+          </div>
           <div class="bar" style="margin:9px 0 0">
             <button class="primary" id="sendToolBtn">发送并结束回合</button>
             <button id="sendToolKeepBtn">先攒着，再发一个</button>
@@ -282,6 +310,8 @@ const S = {
   selected: null, detail: null,
   drafts: {}, seen: new Set(), firstLoad: true,
   pollTimer: null, typeTimer: null, pollAbort: null,
+  // 工具参数：toolFormKey 用来判断「任务 + 工具」有没有变，没变就别重置表单
+  toolArgObj: null, toolSchema: null, toolFormKey: null, toolJsonMode: false,
   titleTimer: null, titleBase: document.title
 };
 
@@ -739,8 +769,7 @@ function updateToolQueued() {
   if (badge) badge.innerHTML = n ? ' <b style="color:var(--accent)">(' + n + ')</b>' : '';
   const hint = $('toolQueuedHint');
   if (hint) {
-    hint.innerHTML = (n ? '已攒下 <b>' + n + '</b> 个调用 —— 点「结束回复」把整批交给对方。' : '')
-      + 'Ctrl+Enter 快捷发送 · arguments 必须是合法 JSON（可以直接换行）';
+    hint.innerHTML = n ? '已攒下 <b>' + n + '</b> 个调用 —— 点「结束回复」把整批交给对方。' : '';
   }
 }
 
@@ -768,7 +797,11 @@ function buildToolSelect() {
     $('toolDesc').textContent = tools.length
       ? '没有匹配「' + toolFilterText + '」的工具，把筛选清掉再看看。'
       : '本次请求没带 tools —— 客户端多半走 XML 工具协议（Cline / Roo Code 这类），直接在输入框里手写 <tool_name>…</tool_name> 标签，然后点「结束回复」即可。';
+    S.toolArgObj = null;
+    S.toolSchema = null;
+    S.toolFormKey = null;
     $('toolArgs').value = '{}';
+    $('toolForm').innerHTML = '';
   }
   updateToolQueued();
 }
@@ -791,6 +824,184 @@ function skeleton(schema) {
   for (const k of Object.keys(props)) out[k] = exampleFor(props[k]);
   return out;
 }
+/* ---------------- 工具参数表单 ---------------- */
+/*
+ * 把 JSON Schema 渲染成表单。
+ * 操作员不该为了发一次工具调用去手写 JSON —— 字符串给输入框、有 enum 给下拉、
+ * 布尔给勾选框、字符串数组给一列「+ 添加一项」，照着填就行。
+ *
+ * 认不出来的结构（深层嵌套、对象数组、anyOf…）就那一个字段退回 JSON 输入框，
+ * 复杂工具仍然能用，不至于整块卡住。
+ *
+ * 数据源始终是 S.toolArgObj：表单是它的视图，JSON 框也是它的视图，两边随时来回切。
+ */
+const TF_MULTILINE = /content|text|body|code|script|command|cmd|prompt|message|description|diff|patch|source|query|answer|input|reason/i;
+
+function schemaType(s) {
+  if (!s || typeof s !== 'object') return 'string';
+  if (Array.isArray(s.type)) return s.type.filter((t) => t !== 'null')[0] || 'string';
+  if (s.type) return s.type;
+  if (s.enum) return 'string';
+  if (s.properties) return 'object';
+  if (s.items) return 'array';
+  return 'string';
+}
+
+function tfGet(path) {
+  let cur = S.toolArgObj;
+  for (const k of path) {
+    if (cur == null || typeof cur !== 'object') return undefined;
+    cur = cur[k];
+  }
+  return cur;
+}
+
+function tfSet(path, val) {
+  if (!path.length) return;
+  let cur = S.toolArgObj;
+  for (let i = 0; i < path.length - 1; i++) {
+    const k = path[i];
+    if (cur[k] == null || typeof cur[k] !== 'object') cur[k] = (typeof path[i + 1] === 'number') ? [] : {};
+    cur = cur[k];
+  }
+  cur[path[path.length - 1]] = val;
+}
+
+const tfAttr = (p) => ' data-path="' + esc(JSON.stringify(p)) + '"';
+
+function tfFallback(path, schema, val) {
+  const v = val === undefined ? (schema && schema.default !== undefined ? schema.default : {}) : val;
+  return '<textarea class="tf-json" rows="3" data-json-path="' + esc(JSON.stringify(path)) + '">'
+    + esc(JSON.stringify(v, null, 2)) + '</textarea>';
+}
+
+function tfField(path, schema, required) {
+  const name = String(path[path.length - 1]);
+  const t = schemaType(schema);
+  const title = schema.title || name;
+  const val = tfGet(path);
+  const raw = '<span class="raw">' + esc(name) + '</span>';
+
+  // 布尔单独一套排版：勾选框和文字同一行，说明放下面
+  if (t === 'boolean') {
+    return '<div class="tf-field"><label class="tf-bool">'
+      + '<input type="checkbox"' + tfAttr(path) + (val ? ' checked' : '') + '>'
+      + '<span>' + esc(title) + '</span>' + raw + '</label>'
+      + (schema.description ? '<div class="tf-hint" style="margin-left:23px">' + esc(schema.description) + '</div>' : '')
+      + '</div>';
+  }
+
+  let label = '<div class="tf-label">' + esc(title) + (required ? ' <span class="req">*</span>' : '') + raw + '</div>';
+  if (schema.description) label += '<div class="tf-hint">' + esc(schema.description) + '</div>';
+
+  let body;
+
+  if (t === 'string' && Array.isArray(schema.enum) && schema.enum.length) {
+    body = '<select' + tfAttr(path) + '><option value="">—— 请选择 ——</option>'
+      + schema.enum.map((v) => '<option value="' + esc(String(v)) + '"'
+          + (String(val) === String(v) ? ' selected' : '') + '>' + esc(String(v)) + '</option>').join('')
+      + '</select>';
+  } else if (t === 'number' || t === 'integer') {
+    body = '<input type="number"' + tfAttr(path) + (t === 'integer' ? ' step="1"' : '')
+      + ' value="' + esc(val == null ? '' : String(val)) + '">';
+  } else if (t === 'array') {
+    const it = schema.items || { type: 'string' };
+    if (schemaType(it) === 'string' && !it.enum && !it.properties) {
+      const arr = Array.isArray(val) ? val : [];
+      body = '<div class="tf-list">'
+        + (arr.length
+            ? arr.map((v, i) => '<div class="tf-list-row">'
+                + '<input type="text"' + tfAttr(path.concat(i)) + ' value="' + esc(v == null ? '' : String(v)) + '"'
+                + ' placeholder="第 ' + (i + 1) + ' 项">'
+                + '<button class="tf-del" data-del="' + esc(JSON.stringify(path.concat(i))) + '" title="删掉这一项">✕</button>'
+                + '</div>').join('')
+            : '<div class="tf-empty">还没有内容</div>')
+        + '<button class="ghost tf-add" data-add="' + esc(JSON.stringify(path)) + '">+ 添加一项</button>'
+        + '</div>';
+    } else {
+      body = tfFallback(path, schema, val);
+    }
+  } else if (t === 'object' && schema.properties) {
+    const inner = Object.keys(schema.properties).map((k) =>
+      tfField(path.concat(k), schema.properties[k], (schema.required || []).indexOf(k) >= 0)).join('');
+    return '<fieldset class="tf-field tf-group"><legend>' + esc(title) + '</legend>' + inner + '</fieldset>';
+  } else if (t === 'string') {
+    const multi = TF_MULTILINE.test(name) || schema.format === 'multiline';
+    const ph = esc(schema.example || '');
+    body = multi
+      ? '<textarea' + tfAttr(path) + ' placeholder="' + ph + '">' + esc(val == null ? '' : String(val)) + '</textarea>'
+      : '<input type="text"' + tfAttr(path) + ' value="' + esc(val == null ? '' : String(val)) + '" placeholder="' + ph + '">';
+  } else {
+    body = tfFallback(path, schema, val);
+  }
+
+  return '<div class="tf-field">' + label + body + '</div>';
+}
+
+function renderToolForm() {
+  const el = $('toolForm');
+  if (!el) return;
+  const schema = (S.toolSchema && S.toolSchema.properties) ? S.toolSchema : null;
+  if (!schema || !Object.keys(schema.properties).length) {
+    el.classList.remove('toolform');
+    // 没选工具时留空；选了但确实没参数才提示
+    el.innerHTML = S.toolSchema
+      ? '<div class="hint" style="margin-bottom:8px">这个工具没声明参数，直接发送就行。</div>'
+      : '';
+    return;
+  }
+  const req = schema.required || [];
+  el.classList.add('toolform');
+  el.innerHTML = Object.keys(schema.properties).map((k) =>
+    tfField([k], schema.properties[k], req.indexOf(k) >= 0)).join('');
+}
+
+/** 数组里没填的空项要丢掉 —— 用户点了「添加一项」却没写内容，不该发个空字符串过去 */
+function tfPrune(v) {
+  if (Array.isArray(v)) return v.map(tfPrune).filter((x) => !(typeof x === 'string' && x.trim() === ''));
+  if (v && typeof v === 'object') {
+    const o = {};
+    for (const k of Object.keys(v)) o[k] = tfPrune(v[k]);
+    return o;
+  }
+  return v;
+}
+
+function toolArgsJson() {
+  if (S.toolJsonMode) return $('toolArgs').value;
+  return JSON.stringify(tfPrune(S.toolArgObj || {}), null, 2);
+}
+
+function syncJsonBox() {
+  if ($('toolArgs')) $('toolArgs').value = toolArgsJson();
+}
+
+function applyToolMode() {
+  $('toolForm').classList.toggle('hide', !!S.toolJsonMode);
+  $('toolArgs').classList.toggle('hide', !S.toolJsonMode);
+  $('toolModeBtn').textContent = S.toolJsonMode ? '回到表单填写' : '改用 JSON 编辑';
+  $('toolModeHint').textContent = S.toolJsonMode
+    ? 'Ctrl+Enter 快捷发送 · arguments 必须是合法 JSON（可以直接换行）'
+    : 'Ctrl+Enter 快捷发送 · 照着填就行，不用懂 JSON';
+  if (S.toolJsonMode) {
+    syncJsonBox();
+  } else {
+    // 从 JSON 切回表单：先把用户手改的内容收进来；解析失败就保留上一次的。
+    // 空内容直接跳过 —— 页面刚加载时这个框是空的，不该弹报错。
+    const raw = $('toolArgs').value.trim();
+    if (raw) {
+      try {
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) S.toolArgObj = parsed;
+        else toast('JSON 顶层得是一个对象，已保留上一次的内容', 'err');
+      } catch (e) {
+        toast('JSON 有语法错误，已保留上一次的内容', 'err');
+      }
+    }
+    renderToolForm();
+  }
+}
+
 function onToolChange() {
   const tools = ($('detail') && S.detail && S.detail.tools) || [];
   const i = parseInt($('toolSelect').value, 10);
@@ -798,8 +1009,31 @@ function onToolChange() {
   if (!t) return;
   const fn = t.function || t;
   if (S.selected) lastToolByTask[S.selected] = fn.name;   // 记住，下次切回来直接选中
+
+  /*
+   * 按「任务 + 工具」做 key 判断要不要重置。
+   * buildToolSelect 每次 refreshDetail 都会跑（比如刚发完一次调用），
+   * 如果无条件重置，用户填了一半的内容会被冲掉 —— 用表单填更容易踩到。
+   */
+  const key = S.selected + '|' + fn.name;
   $('toolDesc').textContent = fn.description || '';
-  $('toolArgs').value = JSON.stringify(skeleton(fn.parameters), null, 2);
+  if (S.toolFormKey === key && S.toolArgObj) return;
+
+  S.toolFormKey = key;
+  S.toolSchema = fn.parameters || {};
+  S.toolArgObj = skeleton(fn.parameters);
+  renderToolForm();
+  syncJsonBox();
+}
+
+/** 发送前检查必填项 —— 别让用户发一个注定被拒的空调用 */
+function tfMissingRequired() {
+  if (S.toolJsonMode) return [];
+  const req = (S.toolSchema && S.toolSchema.required) || [];
+  return req.filter((k) => {
+    const v = S.toolArgObj ? S.toolArgObj[k] : undefined;
+    return v === undefined || v === null || v === '' || (Array.isArray(v) && !v.length);
+  });
 }
 async function sendTool(finish) {
   const id = S.selected; if (!id) return;
@@ -807,7 +1041,11 @@ async function sendTool(finish) {
   const t = tools[parseInt($('toolSelect').value, 10)];
   if (!t) return toast('没有可选工具', 'err');
   const fn = t.function || t;
-  let args = $('toolArgs').value;
+
+  const miss = tfMissingRequired();
+  if (miss.length) return toast('还有必填项没填：' + miss.join('、'), 'err');
+
+  let args = toolArgsJson();
   try { JSON.parse(args); } catch (e) { return toast('arguments 不是合法 JSON：' + e.message, 'err'); }
   try {
     const text = $('reply').value;
@@ -821,7 +1059,10 @@ async function sendTool(finish) {
     S.drafts[id] = '';
     draftsSave();
     await refreshDetail(); renderLists();
-    if (!finish) $('toolArgs').focus();
+  if (!finish) {
+    const el = S.toolJsonMode ? $('toolArgs') : $('toolForm').querySelector('input,textarea,select');
+    if (el) el.focus();
+  }
   } catch (e) { toast('发送失败：' + e.message, 'err'); }
 }
 
@@ -1088,6 +1329,54 @@ $('sendToolKeepBtn').onclick = () => sendTool(false);
 $('toolPanelBtn').onclick = () => $('toolPanel').classList.toggle('hide');
 $('toolSelect').onchange = onToolChange;
 $('toolFilter').oninput = () => { toolFilterText = $('toolFilter').value; buildToolSelect(); };
+$('toolModeBtn').onclick = () => { S.toolJsonMode = !S.toolJsonMode; applyToolMode(); };
+
+/* 表单是 S.toolArgObj 的视图：输入直接写回对象，数组增删后整块重渲染 */
+$('toolForm').addEventListener('input', (e) => {
+  const el = e.target;
+  if (!el || !el.dataset) return;
+  if (el.dataset.path) {
+    let v;
+    if (el.type === 'checkbox') v = el.checked;
+    else if (el.type === 'number') v = el.value === '' ? 0 : Number(el.value);
+    else v = el.value;
+    try { tfSet(JSON.parse(el.dataset.path), v); } catch (err) { /* 忽略 */ }
+  } else if (el.dataset.jsonPath) {
+    try {
+      tfSet(JSON.parse(el.dataset.jsonPath), JSON.parse(el.value));
+      el.classList.remove('tf-bad');
+    } catch (err) {
+      el.classList.add('tf-bad');
+    }
+  }
+  syncJsonBox();
+});
+$('toolForm').addEventListener('change', (e) => {
+  if (e.target && e.target.tagName === 'SELECT') {
+    $('toolForm').dispatchEvent(new Event('input', { bubbles: true }));
+  }
+});
+$('toolForm').addEventListener('click', (e) => {
+  const add = e.target.closest && e.target.closest('[data-add]');
+  const del = e.target.closest && e.target.closest('[data-del]');
+  if (add) {
+    const path = JSON.parse(add.dataset.add);
+    const arr = tfGet(path);
+    const list = Array.isArray(arr) ? arr.slice() : [];
+    list.push('');
+    tfSet(path, list);
+    renderToolForm();
+    syncJsonBox();
+  } else if (del) {
+    const path = JSON.parse(del.dataset.del);
+    const parent = tfGet(path.slice(0, -1));
+    if (Array.isArray(parent)) {
+      parent.splice(Number(path[path.length - 1]), 1);
+      renderToolForm();
+      syncJsonBox();
+    }
+  }
+});
 $('toolArgs').addEventListener('keydown', (e) => {
   if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); sendTool(true); }
 });
@@ -1110,6 +1399,7 @@ $('reply').addEventListener('paste', (e) => {
 
 (function boot() {
   updateCount();
+  applyToolMode();
   $('liveHint').textContent = liveHintText();
   try { if (window.Notification && Notification.permission === 'default') Notification.requestPermission(); } catch (e) {}
   if (S.token) { showApp(); poll(true); } else { showLogin(); }
