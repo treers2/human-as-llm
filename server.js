@@ -87,6 +87,33 @@ const PORT = Number(process.env.PORT) || CONFIG.port;
 const HOST = process.env.HOST || CONFIG.host;
 const IS_HOSTED = !!process.env.PORT;
 
+/**
+ * 这次请求对外应该用的地址。
+ *
+ * **不能直接信 req.headers.host** —— 反代会把 Host 改写成内部地址。
+ * 实测某平台的边缘网关会把 `https://你的域名/…` 转成
+ * `https://3000-<沙箱id>.e2b.bj9.sandbox.cloudstudio.club/…`，
+ * 直接拿它拼，教程页里就会印出一串对方根本打不开的内网地址。
+ *
+ * 优先级：
+ *   1. config.publicUrl —— 操作员明确声明的对外地址，最可靠
+ *   2. X-Forwarded-Host / X-Forwarded-Proto —— 反代的标准头
+ *   3. Host —— 直连（本机跑就是这条）
+ */
+function requestOrigin(req) {
+  const cfgUrl = String(CONFIG.publicUrl || '').replace(/\/+$/, '');
+  if (cfgUrl) return cfgUrl;
+
+  const xfHost = String((req && req.headers && req.headers['x-forwarded-host']) || '').split(',')[0].trim();
+  const host = xfHost || (req && req.headers && req.headers.host) || ('127.0.0.1:' + PORT);
+
+  let proto = String((req && req.headers && req.headers['x-forwarded-proto']) || '').split(',')[0].trim();
+  if (proto !== 'http' && proto !== 'https') {
+    proto = /^(127\.0\.0\.1|localhost|\[::1\])(:|$)/.test(host) ? 'http' : 'https';
+  }
+  return proto + '://' + host;
+}
+
 function saveConfig() {
   try {
     fs.writeFileSync(CONFIG_PATH, JSON.stringify(CONFIG, null, 2), 'utf8');
@@ -485,6 +512,7 @@ function createTask(opts) {
     source: opts.source,
     keyName: opts.keyName,
     host: opts.host || '',
+    origin: opts.origin || '',
     promptChars: JSON.stringify(opts.messages || []).length,
     status: 'pending',       // pending | done | abandoned
     text: '',
@@ -518,9 +546,7 @@ function notifyConsole(task) {
   }
   // 请求是从哪个地址进来的，就该去哪个控制台回复 ——
   // 本机和公网是两个独立的队列，写死 127.0.0.1 会把人引到没东西的那个控制台。
-  const host = task.host || ('127.0.0.1:' + CONFIG.port);
-  const scheme = /^(127\.0\.0\.1|localhost|\[::1\])(:|$)/.test(host) ? 'http' : 'https';
-  console.log('  -> 回复请打开 ' + scheme + '://' + host + '/admin');
+  console.log('  -> 回复请打开 ' + (task.origin || requestOrigin(null)) + '/admin');
   console.log('='.repeat(66) + '\n');
 }
 
@@ -857,7 +883,8 @@ async function handleChatCompletions(req, res) {
     includeUsage: !!(body.stream_options && body.stream_options.include_usage),
     source: guessSource(req),
     keyName: auth.entry.name,
-    host: req.headers.host || ''
+    host: req.headers.host || '',
+    origin: requestOrigin(req)
   });
 
   if (wantStream) {
@@ -1267,11 +1294,9 @@ function serveStatic(res, filePath, req) {
     }
     let body = buf;
     if (/\.html?$/i.test(filePath)) {
-      const host = (req && req.headers && req.headers.host) || ('127.0.0.1:' + PORT);
-      const scheme = /^(127\.0\.0\.1|localhost|\[::1\])(:|$)/.test(host) ? 'http' : 'https';
       const tpl = {
         PRODUCT: CONFIG.productName || 'human-as-llm',
-        ORIGIN: scheme + '://' + host,
+        ORIGIN: requestOrigin(req),
         PUBLIC: String(CONFIG.publicUrl || '').replace(/\/+$/, ''),
         MODEL: CONFIG.modelId || 'me-1'
       };
@@ -1330,12 +1355,10 @@ const server = http.createServer(async (req, res) => {
      */
     const PAGE_PATHS = ['/', '/index.html', '/quick', '/quick/', '/guide', '/guide/', '/admin', '/admin/'];
     if (req.method === 'POST' && PAGE_PATHS.indexOf(p) >= 0) {
-      const host = req.headers.host || ('127.0.0.1:' + PORT);
-      const scheme = /^(127\.0\.0\.1|localhost|\[::1\])(:|$)/.test(host) ? 'http' : 'https';
       return json(res, 400, {
         error: {
           message: '这个地址是「教程页」，不是 API 接口 —— 你多半是把浏览器地址栏里那条链接'
-            + '直接填进客户端的「API 地址」了。正确的是 ' + scheme + '://' + host + '/k/<你的密钥>/v1'
+            + '直接填进客户端的「API 地址」了。正确的是 ' + requestOrigin(req) + '/k/<你的密钥>/v1'
             + '，路径里必须有 /k/<密钥>/v1 这一段。',
           type: 'invalid_request_error'
         }
